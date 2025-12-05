@@ -1,0 +1,174 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+model Shop {
+  id          String   @id @default(uuid())
+  shopDomain  String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  products            Product[]
+  collections         Collection[]
+  metafieldDefinitions MetafieldDefinition[]
+  templates           SpecificationTemplate[]
+  assignments         TemplateAssignment[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  shopifyId   String
+  title       String
+  handle      String?
+  shopId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  
+  @@unique([shopifyId, shopId])
+  @@index([shopId])
+}
+
+model Collection {
+  id          String   @id @default(uuid())
+  shopifyId   String
+  title       String
+  handle      String?
+  shopId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  
+  @@unique([shopifyId, shopId])
+  @@index([shopId])
+}
+
+model MetafieldDefinition {
+  id          String   @id @default(uuid())
+  namespace   String
+  key         String
+  name        String?
+  type        String
+  ownerType   String   // "PRODUCT" or "VARIANT"
+  shopId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  templateSectionMetafields TemplateSectionMetafield[]
+  
+  @@unique([namespace, key, ownerType, shopId])
+  @@index([shopId])
+}
+
+model SpecificationTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  shopId      String
+  styling     String   // JSON string with styling config
+  isActive    Boolean  @default(true)
+  isAccordion Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  sections    TemplateSection[]
+  assignments TemplateAssignment[]
+  
+  @@index([shopId])
+}
+
+model TemplateSection {
+  id          String   @id @default(uuid())
+  templateId  String
+  heading     String
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  template    SpecificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  metafields  TemplateSectionMetafield[]
+  
+  @@index([templateId])
+}
+
+model TemplateSectionMetafield {
+  id                    String   @id @default(uuid())
+  sectionId             String
+  metafieldDefinitionId String
+  order                 Int      @default(0)
+  createdAt             DateTime @default(now())
+  
+  section               TemplateSection      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  metafieldDefinition   MetafieldDefinition @relation(fields: [metafieldDefinitionId], references: [id], onDelete: Cascade)
+  
+  @@unique([sectionId, metafieldDefinitionId])
+  @@index([sectionId])
+}
+
+enum AssignmentType {
+  PRODUCT
+  COLLECTION
+  DEFAULT
+}
+
+model TemplateAssignment {
+  id            String         @id @default(uuid())
+  templateId   String
+  assignmentType AssignmentType
+  shopId       String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  
+  template     SpecificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  shop         Shop                  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  targets      TemplateAssignmentTarget[]
+  
+  @@index([shopId])
+  @@index([templateId])
+}
+
+model TemplateAssignmentTarget {
+  id            String   @id @default(uuid())
+  assignmentId  String
+  targetShopifyId String // Product or Collection Shopify ID
+  targetType    String   // "PRODUCT" or "COLLECTION"
+  isExcluded    Boolean  @default(false) // For exclusion rules
+  createdAt     DateTime @default(now())
+  
+  assignment    TemplateAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  
+  @@index([assignmentId])
+  @@index([targetShopifyId])
+}

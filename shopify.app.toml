@@ -1,0 +1,33 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "ca91204f3bbed9d75fb64d69bea21264"
+name = "description-container-v1"
+application_url = "https://conventions-winners-quiet-eden.trycloudflare.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2026-01"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_products,read_collection_listings,read_metaobject_definitions"
+
+[auth]
+redirect_urls = [ "https://conventions-winners-quiet-eden.trycloudflare.com/api/auth" ]
+
+
+[app_proxy]
+url = "/api/template"         # ruta pentru template
+prefix = "apps"               # prefixul din storefront
+subpath = "description-container-v1"
