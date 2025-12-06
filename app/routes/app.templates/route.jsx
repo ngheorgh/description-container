@@ -515,77 +515,109 @@ export default function TemplatesPage() {
 
   return (
     <s-page heading="Template-uri de Specificații">
-        <s-button slot="primary-action" href="/app/templates/new">
-          Create new template
+        <s-button slot="primary-action" href="/app/templates/new" variant="primary">
+          + Creează Template Nou
         </s-button>
 
         {templates.length === 0 ? (
-          <s-section heading="Niciun template creat">
-            <s-paragraph>
-              You haven't created any templates yet. Click the "Create new template" button to get started.
-            </s-paragraph>
+          <s-section>
+            <div style={{
+              textAlign: "center",
+              padding: "60px 20px",
+              backgroundColor: "#f6f6f7",
+              borderRadius: "8px",
+              border: "2px dashed #c9cccf"
+            }}>
+              <div style={{ fontSize: "48px", marginBottom: "20px" }}>📋</div>
+              <s-heading level="2" style={{ marginBottom: "16px" }}>
+                Nu ai creat încă niciun template
+              </s-heading>
+              <s-paragraph tone="subdued" style={{ marginBottom: "24px", maxWidth: "500px", margin: "0 auto 24px" }}>
+                Creează primul tău template de specificații pentru a începe să organizezi metafield-urile produselor tale într-un mod structurat și profesional.
+              </s-paragraph>
+              <s-button href="/app/templates/new" variant="primary" size="large">
+                + Creează Primul Template
+              </s-button>
+            </div>
           </s-section>
         ) : (
-          <s-section heading="Custom templates">
+          <s-section>
             <s-stack direction="block" gap="base">
               {templates.map((template) => (
-                <s-box
+                <div
                   key={template.id}
-                  padding="base"
-                  borderWidth="base"
-                  borderRadius="base"
-                  background="subdued"
+                  style={{
+                    padding: "24px",
+                    border: "1px solid #e1e3e5",
+                    borderRadius: "8px",
+                    backgroundColor: "#ffffff",
+                    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+                    transition: "box-shadow 0.2s ease",
+                    marginBottom: "16px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.1)";
+                  }}
                 >
-                  <s-stack direction="block" gap="tight">
-                    <s-stack direction="inline" gap="base" alignment="space-between">
-                      <div>
-                        <s-heading level="3">{template.name}</s-heading>
-                        <s-text>
-                          {template.sections.length} sections,{" "}
+                  <s-stack direction="block" gap="base">
+                    <s-stack direction="inline" gap="base" alignment="space-between" style={{ alignItems: "flex-start" }}>
+                      <div style={{ flex: 1 }}>
+                        <s-heading level="3" style={{ marginBottom: "8px" }}>
+                          {template.name}
+                        </s-heading>
+                        <s-text tone="subdued" style={{ marginBottom: "12px" }}>
+                          {template.sections.length} {template.sections.length === 1 ? "secțiune" : "secțiuni"},{" "}
                           {template.sections.reduce(
                             (acc, section) => acc + section.metafields.length,
                             0
                           )}{" "}
-                          metafields
+                          {template.sections.reduce((acc, section) => acc + section.metafields.length, 0) === 1 ? "metafield" : "metafield-uri"}
                         </s-text>
                       </div>
-                      <s-stack direction="inline" gap="tight">
+                      <s-stack direction="inline" gap="tight" style={{ flexWrap: "wrap" }}>
                         <s-badge
                           status={template.isActive ? "success" : "attention"}
                         >
-                          {template.isActive ? "Activ" : "Inactiv"}
+                          {template.isActive ? "✓ Activ" : "⚠ Inactiv"}
                         </s-badge>
                         {template.isAccordion && (
-                          <s-badge>Accordion</s-badge>
+                          <s-badge tone="info">📑 Accordion</s-badge>
                         )}
                       </s-stack>
                     </s-stack>
-                    <s-stack direction="inline" gap="tight">
+                    
+                    <s-stack direction="inline" gap="tight" style={{ marginTop: "16px" }}>
                       <s-button
                         href={`/app/templates/${template.id}`}
                         variant="primary"
                       >
-                        Edit
+                        ✏️ Editează
                       </s-button>
                       <s-button
                         onClick={() => handleDelete(template.id)}
                         variant="critical"
                       >
-                        Delete
+                        🗑️ Șterge
                       </s-button>
                     </s-stack>
-                    <TemplateAssignment
-                      template={template}
-                      products={products}
-                      collections={collections}
-                      shopify={shopify}
-                      assignedCollections={assignedCollections}
-                      assignedProducts={assignedProducts}
-                      hasGlobalAssignment={hasGlobalAssignment}
-                      globalAssignmentTemplateId={globalAssignmentTemplateId}
-                    />
+                    
+                    <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e1e3e5" }}>
+                      <TemplateAssignment
+                        template={template}
+                        products={products}
+                        collections={collections}
+                        shopify={shopify}
+                        assignedCollections={assignedCollections}
+                        assignedProducts={assignedProducts}
+                        hasGlobalAssignment={hasGlobalAssignment}
+                        globalAssignmentTemplateId={globalAssignmentTemplateId}
+                      />
+                    </div>
                   </s-stack>
-                </s-box>
+                </div>
               ))}
             </s-stack>
           </s-section>

@@ -323,6 +323,55 @@ export async function syncMetafieldDefinitions(admin, shopDomain) {
 }
 
 /**
+ * Sincronizează un singur metafield definition (folosit pentru webhook-uri)
+ */
+export async function syncSingleMetafieldDefinition(admin, shopDomain, metafieldDefinitionData) {
+  // Găsește sau creează shop-ul
+  let shop = await prisma.shop.findUnique({
+    where: { shopDomain },
+  });
+
+  if (!shop) {
+    shop = await prisma.shop.create({
+      data: { shopDomain },
+    });
+  }
+
+  // Normalizează ownerType: PRODUCT_VARIANT sau PRODUCTVARIANT -> VARIANT, PRODUCT rămâne PRODUCT
+  const normalizedOwnerType =
+    metafieldDefinitionData.ownerType === "PRODUCT_VARIANT" || 
+    metafieldDefinitionData.ownerType === "PRODUCTVARIANT"
+      ? "VARIANT"
+      : metafieldDefinitionData.ownerType;
+
+  // Upsert metafield definition
+  await prisma.metafieldDefinition.upsert({
+    where: {
+      namespace_key_ownerType_shopId: {
+        namespace: metafieldDefinitionData.namespace,
+        key: metafieldDefinitionData.key,
+        ownerType: normalizedOwnerType,
+        shopId: shop.id,
+      },
+    },
+    update: {
+      name: metafieldDefinitionData.name || null,
+      type: metafieldDefinitionData.type?.name || metafieldDefinitionData.type,
+    },
+    create: {
+      namespace: metafieldDefinitionData.namespace,
+      key: metafieldDefinitionData.key,
+      name: metafieldDefinitionData.name || null,
+      type: metafieldDefinitionData.type?.name || metafieldDefinitionData.type,
+      ownerType: normalizedOwnerType,
+      shopId: shop.id,
+    },
+  });
+
+  return { success: true, shopId: shop.id };
+}
+
+/**
  * Sincronizează toate datele (produse, colecții, metafield-uri)
  */
 export async function syncAll(admin, shopDomain) {
