@@ -584,7 +584,7 @@ export default function TemplatesPage() {
                           {template.isActive ? "✓ Activ" : "⚠ Inactiv"}
                         </s-badge>
                         {template.isAccordion && (
-                          <s-badge tone="info">📑 Accordion</s-badge>
+                          <s-badge tone="info">Accordion</s-badge>
                         )}
                       </s-stack>
                     </s-stack>
@@ -593,14 +593,17 @@ export default function TemplatesPage() {
                       <s-button
                         href={`/app/templates/${template.id}`}
                         variant="primary"
+                        icon="edit"
                       >
-                        ✏️ Editează
+                        Edit
                       </s-button>
                       <s-button
                         onClick={() => handleDelete(template.id)}
                         variant="critical"
+                        icon="delete"
+                        tone="critical"
                       >
-                        🗑️ Șterge
+                        Delete
                       </s-button>
                     </s-stack>
                     

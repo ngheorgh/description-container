@@ -579,8 +579,12 @@
         html += 'cursor: pointer; padding: 10px; ';
         html += 'background-color: ' + (styling.backgroundColor || '#ffffff') + '; ';
         html += 'border-bottom: 1px solid ' + (styling.textColor || '#000000') + ';';
+        html += 'display: flex; align-items: center; justify-content: space-between;';
         html += '" onclick="toggleSpecSection(' + sectionIndex + ', \'' + template.id + '\')">';
-        html += escapeHtml(section.heading);
+        html += '<span>' + escapeHtml(section.heading) + '</span>';
+        html += '<span class="spec-accordion-arrow" id="spec-arrow-' + template.id + '-' + sectionIndex + '" style="';
+        html += 'display: inline-block; transition: transform 0.3s ease; font-size: 14px; margin-left: 10px;';
+        html += '">▼</span>';
         html += '</div>';
         html += '<div id="spec-section-' + template.id + '-' + sectionIndex + '" class="spec-section-content" style="display: none; padding: 10px;">';
         html += renderSectionTable(section, styling, firstColumnWidth);
@@ -639,10 +643,10 @@
       
       // Adaugă tooltip dacă este activat
       if (metafield.tooltipEnabled && metafield.tooltipText) {
-        nameHtml += ' <span title="' + escapeHtml(metafield.tooltipText) + '" style="margin-left: 8px; cursor: help; font-size: 0.9em; opacity: 0.7;">ℹ️</span>';
+        nameHtml += ' <span title="' + escapeHtml(metafield.tooltipText) + '" style="margin-left: 8px; cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background-color: #202223; color: #ffffff; font-size: 11px; font-weight: bold; line-height: 1; vertical-align: middle;">i</span>';
       }
       
-      html += nameHtml + ':';
+      html += nameHtml + '  :';
       html += '</td>';
       html += '<td style="';
       html += 'padding: 8px; ';
@@ -671,8 +675,13 @@
   // Funcție globală pentru toggle accordion
   window.toggleSpecSection = function(sectionIndex, templateId) {
     const section = document.getElementById('spec-section-' + templateId + '-' + sectionIndex);
+    const arrow = document.getElementById('spec-arrow-' + templateId + '-' + sectionIndex);
     if (section) {
-      section.style.display = section.style.display === 'none' ? 'block' : 'none';
+      const isHidden = section.style.display === 'none' || section.style.display === '';
+      section.style.display = isHidden ? 'block' : 'none';
+      if (arrow) {
+        arrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+      }
     }
   };
   

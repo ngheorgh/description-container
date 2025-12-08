@@ -166,6 +166,11 @@ export const action = async ({ request, params }) => {
   const isActive = formData.get("isActive") === "true";
   const isAccordion = formData.get("isAccordion") === "true";
 
+  // Validare: Template name nu poate fi gol
+  if (!name || name.trim() === "") {
+    return { success: false, error: "Template name cannot be empty" };
+  }
+
   // Parse styling
   const styling = {
     backgroundColor: formData.get("backgroundColor") || "#ffffff",
@@ -197,9 +202,12 @@ export const action = async ({ request, params }) => {
   const sections = [];
   const sectionCount = parseInt(formData.get("sectionCount") || "0");
 
+  // Validare: Fiecare secțiune trebuie să aibă un heading
   for (let i = 0; i < sectionCount; i++) {
     const heading = formData.get(`section_${i}_heading`);
-    if (!heading) continue;
+    if (!heading || heading.trim() === "") {
+      return { success: false, error: `Section ${i + 1} title cannot be empty` };
+    }
 
     const metafieldCount = parseInt(
       formData.get(`section_${i}_metafieldCount`) || "0"
@@ -426,6 +434,7 @@ export default function TemplateEditorPage() {
         return () => clearTimeout(timer);
       }
     }
+    // Dacă există eroare, afișează-o automat (banner-ul va fi afișat)
   }, [actionData, navigate]);
 
 
@@ -699,6 +708,123 @@ export default function TemplateEditorPage() {
   // Debug pentru metafield-uri
   console.log("Metafield definitions loaded:", metafieldDefinitions?.length || 0);
 
+  // Component pentru secțiune accordion
+  const AccordionSection = ({ section, sectionIndex, styling, metafieldDefinitions }) => {
+    const [isOpen, setIsOpen] = useState(sectionIndex === 0);
+    
+    return (
+      <div style={{ marginBottom: "20px" }}>
+        <div
+          onClick={() => setIsOpen(!isOpen)}
+          style={{
+            color: styling.headingColor,
+            fontSize: styling.headingFontSize,
+            fontWeight: styling.headingFontWeight,
+            fontFamily: styling.headingFontFamily,
+            cursor: "pointer",
+            padding: "10px",
+            backgroundColor: styling.backgroundColor,
+            borderBottom: `1px solid ${styling.textColor || "#000000"}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            userSelect: "none",
+          }}
+        >
+          <span>{section.heading}</span>
+          <span
+            style={{
+              display: "inline-block",
+              transition: "transform 0.3s ease",
+              fontSize: "14px",
+              marginLeft: "10px",
+              transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+            }}
+          >
+            ▼
+          </span>
+        </div>
+        {isOpen && section.metafields && section.metafields.length > 0 && (
+          <div style={{ padding: "10px" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+              <tbody>
+                {section.metafields.map((metafield, mfIndex) => {
+                  const mfDef = metafieldDefinitions?.find(
+                    (mf) => mf.id === metafield.metafieldDefinitionId
+                  );
+                  const metafieldName = metafield.customName 
+                    ? metafield.customName
+                    : (mfDef
+                        ? (mfDef.name || `${mfDef.namespace}.${mfDef.key}`)
+                        : "Metafield");
+                  const isOdd = mfIndex % 2 === 0;
+                  const rowBackground = styling.rowBackgroundEnabled
+                    ? (isOdd ? styling.oddRowBackgroundColor : styling.evenRowBackgroundColor)
+                    : styling.tdBackgroundColor;
+                  
+                  return (
+                    <tr key={mfIndex} style={{ borderBottom: styling.rowBorderEnabled ? `${styling.rowBorderWidth} ${styling.rowBorderStyle} ${styling.rowBorderColor}` : "none" }}>
+                      <td
+                        style={{
+                          padding: "8px",
+                          fontWeight: "bold",
+                          width: "40%",
+                          color: styling.textColor,
+                          fontFamily: styling.textFontFamily,
+                          fontSize: styling.textFontSize,
+                          backgroundColor: rowBackground,
+                          textTransform: styling.textTransform,
+                        }}
+                      >
+                        {metafieldName}
+                        {metafield.tooltipEnabled && metafield.tooltipText && (
+                          <span 
+                            title={metafield.tooltipText} 
+                            style={{ 
+                              marginLeft: "8px", 
+                              cursor: "help",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: "16px",
+                              height: "16px",
+                              borderRadius: "50%",
+                              backgroundColor: "#202223",
+                              color: "#ffffff",
+                              fontSize: "11px",
+                              fontWeight: "bold",
+                              lineHeight: "1",
+                              verticalAlign: "middle"
+                            }}
+                          >
+                            i
+                          </span>
+                        )}
+                        :
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px",
+                          color: styling.textColor,
+                          fontFamily: styling.textFontFamily,
+                          fontSize: styling.textFontSize,
+                          backgroundColor: rowBackground,
+                          textTransform: styling.textTransform,
+                        }}
+                      >
+                        Valoare exemplu
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Component pentru preview
   const PreviewTable = ({ styling, sections, isAccordion }) => {
     const containerStyle = {
@@ -726,6 +852,19 @@ export default function TemplateEditorPage() {
           <div style={{ padding: "20px", textAlign: "center", color: styling.textColor }}>
             <p>Adaugă secțiuni pentru a vedea preview-ul</p>
           </div>
+        ) : isAccordion ? (
+          sections.map((section, sectionIndex) => {
+            if (!section.heading) return null;
+            return (
+              <AccordionSection
+                key={sectionIndex}
+                section={section}
+                sectionIndex={sectionIndex}
+                styling={styling}
+                metafieldDefinitions={metafieldDefinitions}
+              />
+            );
+          })
         ) : (
           sections.map((section, sectionIndex) => {
             if (!section.heading) return null;
@@ -771,11 +910,21 @@ export default function TemplateEditorPage() {
                                   style={{ 
                                     marginLeft: "8px", 
                                     cursor: "help",
-                                    fontSize: "0.9em",
-                                    opacity: 0.7
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: "16px",
+                                    height: "16px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "#202223",
+                                    color: "#ffffff",
+                                    fontSize: "11px",
+                                    fontWeight: "bold",
+                                    lineHeight: "1",
+                                    verticalAlign: "middle"
                                   }}
                                 >
-                                  ℹ️
+                                  i
                                 </span>
                               )}
                               :
@@ -821,6 +970,15 @@ export default function TemplateEditorPage() {
         </div>
       )}
 
+      {/* Banner de eroare */}
+      {actionData?.error && (
+        <div style={{ marginBottom: "16px" }}>
+          <s-banner heading="Error" tone="critical" dismissible={true} onDismiss={() => {}}>
+            {actionData.error}
+          </s-banner>
+        </div>
+      )}
+
       {/* Bară fixă cu butoanele de acțiune */}
       <div style={{ 
         position: "sticky", 
@@ -844,6 +1002,22 @@ export default function TemplateEditorPage() {
             style={{ display: "inline" }}
             key={`form-${formKey}`}
             onSubmit={(e) => {
+              // Validare în frontend
+              if (!templateName || templateName.trim() === "") {
+                e.preventDefault();
+                shopify.toast.show("Template name cannot be empty", { isError: true });
+                return;
+              }
+
+              // Validare section headings
+              for (let i = 0; i < sections.length; i++) {
+                if (!sections[i].heading || sections[i].heading.trim() === "") {
+                  e.preventDefault();
+                  shopify.toast.show(`Section ${i + 1} title cannot be empty`, { isError: true });
+                  return;
+                }
+              }
+
               // Actualizează manual valorile hidden inputs-urilor înainte de submit
               sections.forEach((section, sectionIndex) => {
                 section.metafields?.forEach((metafield, mfIndex) => {
@@ -860,31 +1034,6 @@ export default function TemplateEditorPage() {
                   if (tooltipTextInput) {
                     tooltipTextInput.value = metafield.tooltipText || "";
                   }
-                });
-              });
-              
-              // Debug: verifică valorile din formular după actualizare
-              const formData = new FormData(e.currentTarget);
-              console.log("Form submit - checking hidden inputs AFTER update:");
-              
-              sections.forEach((section, sectionIndex) => {
-                section.metafields?.forEach((metafield, mfIndex) => {
-                  const customName = formData.get(`section_${sectionIndex}_metafield_${mfIndex}_customName`);
-                  const tooltipEnabled = formData.get(`section_${sectionIndex}_metafield_${mfIndex}_tooltipEnabled`);
-                  const tooltipText = formData.get(`section_${sectionIndex}_metafield_${mfIndex}_tooltipText`);
-                  
-                  console.log(`Section ${sectionIndex}, Metafield ${mfIndex}:`, {
-                    fromFormData: {
-                      customName,
-                      tooltipEnabled,
-                      tooltipText,
-                    },
-                    fromState: {
-                      customName: metafield.customName,
-                      tooltipEnabled: metafield.tooltipEnabled,
-                      tooltipText: metafield.tooltipText,
-                    }
-                  });
                 });
               });
             }}
@@ -1079,7 +1228,27 @@ export default function TemplateEditorPage() {
                                         ? (metafield.customName || mfDef.name || `${mfDef.namespace}.${mfDef.key}`)
                                         : "Metafield deleted"}
                                       {metafield.tooltipEnabled && metafield.tooltipText && (
-                                        <span title={metafield.tooltipText} style={{ marginLeft: "8px", cursor: "help", fontSize: "0.9em", opacity: 0.7 }}>ℹ️</span>
+                                        <span 
+                                          title={metafield.tooltipText} 
+                                          style={{ 
+                                            marginLeft: "8px", 
+                                            cursor: "help", 
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            width: "16px",
+                                            height: "16px",
+                                            borderRadius: "50%",
+                                            backgroundColor: "#202223",
+                                            color: "#ffffff",
+                                            fontSize: "11px",
+                                            fontWeight: "bold",
+                                            lineHeight: "1",
+                                            verticalAlign: "middle"
+                                          }}
+                                        >
+                                          i
+                                        </span>
                                       )}
                                     </s-text>
                                   </td>
