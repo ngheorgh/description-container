@@ -115,10 +115,25 @@ export async function createTemplate(data, shopDomain) {
           heading: section.heading,
           order: sectionIndex,
           metafields: {
-            create: section.metafields?.map((metafield, metafieldIndex) => ({
-              metafieldDefinitionId: metafield.metafieldDefinitionId,
-              order: metafieldIndex,
-            })) || [],
+            create: section.metafields?.map((metafield, metafieldIndex) => {
+              const customName = metafield.customName && metafield.customName.trim() !== "" ? metafield.customName.trim() : null;
+              const tooltipText = metafield.tooltipText && metafield.tooltipText.trim() !== "" ? metafield.tooltipText.trim() : null;
+              
+              console.log(`Creating metafield ${metafieldIndex} in section:`, {
+                metafieldDefinitionId: metafield.metafieldDefinitionId,
+                customName,
+                tooltipEnabled: metafield.tooltipEnabled || false,
+                tooltipText,
+              });
+              
+              return {
+                metafieldDefinitionId: metafield.metafieldDefinitionId,
+                order: metafieldIndex,
+                customName,
+                tooltipEnabled: metafield.tooltipEnabled || false,
+                tooltipText,
+              };
+            }) || [],
           },
         })) || [],
       },
@@ -162,6 +177,20 @@ export async function updateTemplate(templateId, data, shopDomain) {
 
   const { name, styling, isActive, isAccordion, sections } = data;
 
+  // Debug: verifică datele primite
+  console.log("updateTemplate - Data received:", JSON.stringify({
+    name,
+    sections: sections?.map(s => ({
+      heading: s.heading,
+      metafields: s.metafields?.map(mf => ({
+        metafieldDefinitionId: mf.metafieldDefinitionId,
+        customName: mf.customName,
+        tooltipEnabled: mf.tooltipEnabled,
+        tooltipText: mf.tooltipText,
+      }))
+    }))
+  }, null, 2));
+
   // Șterge secțiunile existente și creează-le din nou
   await prisma.templateSection.deleteMany({
     where: { templateId: template.id },
@@ -179,10 +208,25 @@ export async function updateTemplate(templateId, data, shopDomain) {
           heading: section.heading,
           order: sectionIndex,
           metafields: {
-            create: section.metafields?.map((metafield, metafieldIndex) => ({
-              metafieldDefinitionId: metafield.metafieldDefinitionId,
-              order: metafieldIndex,
-            })) || [],
+            create: section.metafields?.map((metafield, metafieldIndex) => {
+              const customName = metafield.customName && metafield.customName.trim() !== "" ? metafield.customName.trim() : null;
+              const tooltipText = metafield.tooltipText && metafield.tooltipText.trim() !== "" ? metafield.tooltipText.trim() : null;
+              
+              console.log(`Creating metafield ${metafieldIndex} in section:`, {
+                metafieldDefinitionId: metafield.metafieldDefinitionId,
+                customName,
+                tooltipEnabled: metafield.tooltipEnabled || false,
+                tooltipText,
+              });
+              
+              return {
+                metafieldDefinitionId: metafield.metafieldDefinitionId,
+                order: metafieldIndex,
+                customName,
+                tooltipEnabled: metafield.tooltipEnabled || false,
+                tooltipText,
+              };
+            }) || [],
           },
         })) || [],
       },

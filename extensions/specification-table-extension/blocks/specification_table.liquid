@@ -633,7 +633,16 @@
       html += 'font-size: ' + (styling.textFontSize || '14px') + '; ';
       html += 'text-transform: ' + (styling.textTransform || 'none') + ';';
       html += '">';
-      html += escapeHtml(metafield.name || metafield.namespace + '.' + metafield.key) + ':';
+      // Folosește customName dacă există, altfel name sau namespace.key
+      const displayName = metafield.customName || metafield.name || metafield.namespace + '.' + metafield.key;
+      let nameHtml = escapeHtml(displayName);
+      
+      // Adaugă tooltip dacă este activat
+      if (metafield.tooltipEnabled && metafield.tooltipText) {
+        nameHtml += ' <span title="' + escapeHtml(metafield.tooltipText) + '" style="margin-left: 8px; cursor: help; font-size: 0.9em; opacity: 0.7;">ℹ️</span>';
+      }
+      
+      html += nameHtml + ':';
       html += '</td>';
       html += '<td style="';
       html += 'padding: 8px; ';

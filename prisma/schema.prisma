@@ -128,6 +128,9 @@ model TemplateSectionMetafield {
   sectionId             String
   metafieldDefinitionId String
   order                 Int      @default(0)
+  customName            String?  // Nume personalizat pentru acest template
+  tooltipEnabled        Boolean  @default(false) // Dacă tooltip-ul este activat
+  tooltipText           String?  // Textul tooltip-ului
   createdAt             DateTime @default(now())
   
   section               TemplateSection      @relation(fields: [sectionId], references: [id], onDelete: Cascade)

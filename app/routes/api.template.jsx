@@ -47,6 +47,9 @@ export async function loader({ request }) {
         ownerType: mf.metafieldDefinition.ownerType,
         name: mf.metafieldDefinition.name || null,
         type: mf.metafieldDefinition.type,
+        customName: mf.customName || null,
+        tooltipEnabled: mf.tooltipEnabled || false,
+        tooltipText: mf.tooltipText || null,
       })),
     }));
 

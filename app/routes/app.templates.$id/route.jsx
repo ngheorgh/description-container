@@ -131,6 +131,19 @@ export const loader = async ({ request, params }) => {
     getMetafieldDefinitions(session.shop),
   ]);
 
+  // Debug: verifică dacă datele sunt corecte în template
+  if (template) {
+    console.log("Loader - Template loaded:", JSON.stringify(template.sections?.map(s => ({
+      heading: s.heading,
+      metafields: s.metafields?.map(mf => ({
+        metafieldDefinitionId: mf.metafieldDefinitionId,
+        customName: mf.customName,
+        tooltipEnabled: mf.tooltipEnabled,
+        tooltipText: mf.tooltipText,
+      }))
+    })), null, 2));
+  }
+
   return {
     template,
     metafieldDefinitions,
@@ -196,8 +209,25 @@ export const action = async ({ request, params }) => {
     for (let j = 0; j < metafieldCount; j++) {
       const metafieldId = formData.get(`section_${i}_metafield_${j}`);
       if (metafieldId) {
+        const customNameRaw = formData.get(`section_${i}_metafield_${j}_customName`);
+        const customName = customNameRaw && customNameRaw.trim() !== "" ? customNameRaw.trim() : null;
+        const tooltipEnabledRaw = formData.get(`section_${i}_metafield_${j}_tooltipEnabled`);
+        const tooltipEnabled = tooltipEnabledRaw === "true";
+        const tooltipTextRaw = formData.get(`section_${i}_metafield_${j}_tooltipText`);
+        const tooltipText = tooltipTextRaw && tooltipTextRaw.trim() !== "" ? tooltipTextRaw.trim() : null;
+        
+        console.log(`Metafield ${j} in section ${i}:`, {
+          metafieldId,
+          customName,
+          tooltipEnabled,
+          tooltipText,
+        });
+        
         metafields.push({
           metafieldDefinitionId: metafieldId,
+          customName,
+          tooltipEnabled,
+          tooltipText,
         });
       }
     }
@@ -249,14 +279,42 @@ export default function TemplateEditorPage() {
   const navigate = useNavigate();
   const shopify = useAppBridge();
 
-  const [sections, setSections] = useState(
-    template?.sections || [
-      {
-        heading: "",
-        metafields: [],
-      },
-    ]
-  );
+  const [sections, setSections] = useState(() => {
+    if (!template?.sections) {
+      return [
+        {
+          heading: "",
+          metafields: [],
+        },
+      ];
+    }
+    
+    const initialSections = template.sections.map(section => ({
+      heading: section.heading,
+      metafields: (section.metafields || []).map(mf => {
+        // Debug: verifică ce date sunt disponibile
+        console.log("Loading metafield from template - raw data:", {
+          id: mf.id,
+          metafieldDefinitionId: mf.metafieldDefinitionId,
+          customName: mf.customName,
+          tooltipEnabled: mf.tooltipEnabled,
+          tooltipText: mf.tooltipText,
+          allKeys: Object.keys(mf),
+        });
+        
+        return {
+          metafieldDefinitionId: mf.metafieldDefinitionId,
+          // Folosește valorile direct din baza de date, nu null coalescing
+          customName: mf.customName !== undefined && mf.customName !== null ? mf.customName : null,
+          tooltipEnabled: mf.tooltipEnabled === true,
+          tooltipText: mf.tooltipText !== undefined && mf.tooltipText !== null ? mf.tooltipText : null,
+        };
+      })
+    }));
+    
+    console.log("Initial sections loaded:", JSON.stringify(initialSections, null, 2));
+    return initialSections;
+  });
 
   const [isActive, setIsActive] = useState(
     template?.isActive !== undefined ? template.isActive : true
@@ -270,6 +328,35 @@ export default function TemplateEditorPage() {
   const [metafieldSearchTerm, setMetafieldSearchTerm] = useState({});
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [templateName, setTemplateName] = useState(template?.name || "");
+  const [editingMetafield, setEditingMetafield] = useState(null); // { sectionIndex, metafieldIndex }
+  const [metafieldEditData, setMetafieldEditData] = useState({ customName: "", tooltipEnabled: false, tooltipText: "" });
+  const [formKey, setFormKey] = useState(0); // Counter pentru a forța re-renderizarea formularului
+
+  // Debug: log sections când se schimbă
+  useEffect(() => {
+    console.log("Sections state updated:", JSON.stringify(sections, null, 2));
+  }, [sections]);
+
+  // Actualizează manual valorile hidden inputs-urilor când se schimbă sections
+  useEffect(() => {
+    sections.forEach((section, sectionIndex) => {
+      section.metafields?.forEach((metafield, mfIndex) => {
+        const customNameInput = document.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_customName"]`);
+        const tooltipEnabledInput = document.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_tooltipEnabled"]`);
+        const tooltipTextInput = document.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_tooltipText"]`);
+        
+        if (customNameInput) {
+          customNameInput.value = metafield.customName || "";
+        }
+        if (tooltipEnabledInput) {
+          tooltipEnabledInput.value = metafield.tooltipEnabled ? "true" : "false";
+        }
+        if (tooltipTextInput) {
+          tooltipTextInput.value = metafield.tooltipText || "";
+        }
+      });
+    });
+  }, [sections, formKey]);
 
   const [styling, setStyling] = useState(
     template?.styling
@@ -458,6 +545,9 @@ export default function TemplateEditorPage() {
     }
     newSections[sectionIndex].metafields.push({
       metafieldDefinitionId: metafieldId,
+      customName: null,
+      tooltipEnabled: false,
+      tooltipText: null,
     });
     setSections(newSections);
   };
@@ -486,6 +576,9 @@ export default function TemplateEditorPage() {
     selectedIds.forEach((id) => {
       newSections[sectionIndex].metafields.push({
         metafieldDefinitionId: id,
+        customName: null,
+        tooltipEnabled: false,
+        tooltipText: null,
       });
       // Șterge selecția după adăugare
       delete selectedMetafieldsForSection[`${sectionIndex}_${id}`];
@@ -501,6 +594,37 @@ export default function TemplateEditorPage() {
       sectionIndex
     ].metafields.filter((_, i) => i !== metafieldIndex);
     setSections(newSections);
+  };
+
+  const updateMetafieldData = (sectionIndex, metafieldIndex, data) => {
+    const newSections = [...sections];
+    if (!newSections[sectionIndex].metafields[metafieldIndex]) {
+      return;
+    }
+    
+    // Tratează valorile goale corect
+    const customName = data.customName && data.customName.trim() !== "" ? data.customName.trim() : null;
+    const tooltipText = data.tooltipText && data.tooltipText.trim() !== "" ? data.tooltipText.trim() : null;
+    
+    console.log("Updating metafield data:", {
+      sectionIndex,
+      metafieldIndex,
+      customName,
+      tooltipEnabled: data.tooltipEnabled,
+      tooltipText,
+    });
+    
+    newSections[sectionIndex].metafields[metafieldIndex] = {
+      ...newSections[sectionIndex].metafields[metafieldIndex],
+      customName,
+      tooltipEnabled: data.tooltipEnabled || false,
+      tooltipText,
+    };
+    setSections(newSections);
+    // Incrementează formKey pentru a forța re-renderizarea formularului și hidden inputs-urilor
+    setFormKey(prev => prev + 1);
+    setEditingMetafield(null);
+    setMetafieldEditData({ customName: "", tooltipEnabled: false, tooltipText: "" });
   };
 
   const getAvailableMetafields = (sectionIndex) => {
@@ -616,9 +740,11 @@ export default function TemplateEditorPage() {
                         const mfDef = metafieldDefinitions?.find(
                           (mf) => mf.id === metafield.metafieldDefinitionId
                         );
-                        const metafieldName = mfDef
-                          ? (mfDef.name || `${mfDef.namespace}.${mfDef.key}`)
-                          : "Metafield";
+                        const metafieldName = metafield.customName 
+                          ? metafield.customName
+                          : (mfDef
+                              ? (mfDef.name || `${mfDef.namespace}.${mfDef.key}`)
+                              : "Metafield");
                         const isOdd = mfIndex % 2 === 0; // 0-based index, so 0, 2, 4 are odd rows
                         const rowBackground = styling.rowBackgroundEnabled
                           ? (isOdd ? styling.oddRowBackgroundColor : styling.evenRowBackgroundColor)
@@ -638,7 +764,21 @@ export default function TemplateEditorPage() {
                                 textTransform: styling.textTransform,
                               }}
                             >
-                              {metafieldName}:
+                              {metafieldName}
+                              {metafield.tooltipEnabled && metafield.tooltipText && (
+                                <span 
+                                  title={metafield.tooltipText} 
+                                  style={{ 
+                                    marginLeft: "8px", 
+                                    cursor: "help",
+                                    fontSize: "0.9em",
+                                    opacity: 0.7
+                                  }}
+                                >
+                                  ℹ️
+                                </span>
+                              )}
+                              :
                             </td>
                             <td
                               style={{
@@ -699,7 +839,56 @@ export default function TemplateEditorPage() {
           >
             Anulează
           </s-button>
-          <Form method="post" style={{ display: "inline" }}>
+          <Form 
+            method="post" 
+            style={{ display: "inline" }}
+            key={`form-${formKey}`}
+            onSubmit={(e) => {
+              // Actualizează manual valorile hidden inputs-urilor înainte de submit
+              sections.forEach((section, sectionIndex) => {
+                section.metafields?.forEach((metafield, mfIndex) => {
+                  const customNameInput = e.currentTarget.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_customName"]`);
+                  const tooltipEnabledInput = e.currentTarget.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_tooltipEnabled"]`);
+                  const tooltipTextInput = e.currentTarget.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_tooltipText"]`);
+                  
+                  if (customNameInput) {
+                    customNameInput.value = metafield.customName || "";
+                  }
+                  if (tooltipEnabledInput) {
+                    tooltipEnabledInput.value = metafield.tooltipEnabled ? "true" : "false";
+                  }
+                  if (tooltipTextInput) {
+                    tooltipTextInput.value = metafield.tooltipText || "";
+                  }
+                });
+              });
+              
+              // Debug: verifică valorile din formular după actualizare
+              const formData = new FormData(e.currentTarget);
+              console.log("Form submit - checking hidden inputs AFTER update:");
+              
+              sections.forEach((section, sectionIndex) => {
+                section.metafields?.forEach((metafield, mfIndex) => {
+                  const customName = formData.get(`section_${sectionIndex}_metafield_${mfIndex}_customName`);
+                  const tooltipEnabled = formData.get(`section_${sectionIndex}_metafield_${mfIndex}_tooltipEnabled`);
+                  const tooltipText = formData.get(`section_${sectionIndex}_metafield_${mfIndex}_tooltipText`);
+                  
+                  console.log(`Section ${sectionIndex}, Metafield ${mfIndex}:`, {
+                    fromFormData: {
+                      customName,
+                      tooltipEnabled,
+                      tooltipText,
+                    },
+                    fromState: {
+                      customName: metafield.customName,
+                      tooltipEnabled: metafield.tooltipEnabled,
+                      tooltipText: metafield.tooltipText,
+                    }
+                  });
+                });
+              });
+            }}
+          >
             <input type="hidden" name="name" value={templateName} />
         <input type="hidden" name="sectionCount" value={sections.length} />
         <input type="hidden" name="isActive" value={isActive ? "true" : "false"} />
@@ -729,14 +918,48 @@ export default function TemplateEditorPage() {
             <input type="hidden" name="evenRowBackgroundColor" value={styling.evenRowBackgroundColor} />
             <input type="hidden" name="textTransform" value={styling.textTransform} />
             {sections.map((section, sectionIndex) => (
-              <div key={sectionIndex}>
-                <input type="hidden" name={`section_${sectionIndex}_heading`} value={section.heading || ""} />
-                <input type="hidden" name={`section_${sectionIndex}_metafieldCount`} value={section.metafields?.length || 0} />
-                {section.metafields?.map((mf, mfIndex) => (
-                  <input key={mfIndex} type="hidden" name={`section_${sectionIndex}_metafield_${mfIndex}`} value={mf.metafieldDefinitionId || mf.id} />
+                <div key={sectionIndex}>
+                    <input
+                    type="hidden"
+                    name={`section_${sectionIndex}_heading`}
+                    value={section.heading || ""}
+                    />
+                    <input
+                    type="hidden"
+                    name={`section_${sectionIndex}_metafieldCount`}
+                    value={section.metafields?.length || 0}
+                    />
+
+                    {section.metafields?.map((mf, mfIndex) => (
+                    <div key={`${sectionIndex}-${mfIndex}`}>
+                        <input
+                        type="hidden"
+                        name={`section_${sectionIndex}_metafield_${mfIndex}`}
+                        value={mf.metafieldDefinitionId || mf.id}
+                        />
+
+                        <input
+                        type="hidden"
+                        name={`section_${sectionIndex}_metafield_${mfIndex}_customName`}
+                        value={mf.customName || ""}
+                        />
+
+                        <input
+                        type="hidden"
+                        name={`section_${sectionIndex}_metafield_${mfIndex}_tooltipEnabled`}
+                        value={mf.tooltipEnabled ? "true" : "false"}
+                        />
+
+                        <input
+                        type="hidden"
+                        name={`section_${sectionIndex}_metafield_${mfIndex}_tooltipText`}
+                        value={mf.tooltipText || ""}
+                        />
+                    </div>
+                    ))}
+                </div>
                 ))}
-              </div>
-            ))}
+
             <s-button type="submit" variant="primary">
               {isNew ? "Creează Template" : "Salvează Modificări"}
             </s-button>
@@ -819,44 +1042,95 @@ export default function TemplateEditorPage() {
 
                   <s-stack direction="block" gap="tight">
                     <s-text emphasis="strong">Metafields:</s-text>
-                    {section.metafields?.map((metafield, mfIndex) => {
-                      const mfDef = metafieldDefinitions.find(
-                        (mf) => mf.id === metafield.metafieldDefinitionId
-                      );
-                      return (
-                        <s-box
-                          key={mfIndex}
-                          padding="tight"
-                          borderWidth="base"
-                          borderRadius="base"
-                        >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                            <s-text style={{ flex: "1" }}>
-                              {mfDef
-                                ? `${mfDef.namespace}.${mfDef.key} (${mfDef.ownerType})${mfDef.name ? ` - ${mfDef.name}` : ""}`
-                                : "Metafield deleted"}
-                            </s-text>
-                            <s-button
-                              type="button"
-                              variant="primary"
-                              tone="critical"
-                              icon="delete"
-                              onClick={() =>
-                                removeMetafieldFromSection(sectionIndex, mfIndex)
-                              }
-                              style={{ marginLeft: "16px", flexShrink: 0 }}
-                            >
-                              
-                            </s-button>
-                            <input
-                              type="hidden"
-                              name={`section_${sectionIndex}_metafield_${mfIndex}`}
-                              value={metafield.metafieldDefinitionId}
-                            />
-                          </div>
-                        </s-box>
-                      );
-                    })}
+                    {section.metafields && section.metafields.length > 0 ? (
+                      <div style={{ width: "100%", border: "1px solid #e1e3e5", borderRadius: "8px", overflow: "hidden" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <thead>
+                            <tr style={{ backgroundColor: "#f6f6f7", borderBottom: "2px solid #e1e3e5" }}>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: "600", fontSize: "14px", color: "#202223" }}>
+                                Spec Name
+                              </th>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: "600", fontSize: "14px", color: "#202223" }}>
+                                Spec Definition
+                              </th>
+                              <th style={{ padding: "12px 16px", textAlign: "right", fontWeight: "600", fontSize: "14px", color: "#202223", width: "120px" }}>
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {section.metafields.map((metafield, mfIndex) => {
+                              const mfDef = metafieldDefinitions.find(
+                                (mf) => mf.id === metafield.metafieldDefinitionId
+                              );
+                              // Forțează re-renderizarea când se schimbă valorile
+                              const metafieldKey = `${sectionIndex}-${mfIndex}-${metafield.customName || ""}-${metafield.tooltipEnabled}-${metafield.tooltipText || ""}`;
+                              return (
+                                <tr 
+                                  key={metafieldKey}
+                                  style={{ 
+                                    borderBottom: mfIndex < section.metafields.length - 1 ? "1px solid #e1e3e5" : "none",
+                                    backgroundColor: mfIndex % 2 === 0 ? "#ffffff" : "#fafbfb"
+                                  }}
+                                >
+                                  <td style={{ padding: "12px 16px", verticalAlign: "middle" }}>
+                                    <s-text>
+                                      {mfDef
+                                        ? (metafield.customName || mfDef.name || `${mfDef.namespace}.${mfDef.key}`)
+                                        : "Metafield deleted"}
+                                      {metafield.tooltipEnabled && metafield.tooltipText && (
+                                        <span title={metafield.tooltipText} style={{ marginLeft: "8px", cursor: "help", fontSize: "0.9em", opacity: 0.7 }}>ℹ️</span>
+                                      )}
+                                    </s-text>
+                                  </td>
+                                  <td style={{ padding: "12px 16px", verticalAlign: "middle" }}>
+                                    <s-text style={{ color: "#6d7175", fontSize: "13px" }}>
+                                      {mfDef
+                                        ? `${mfDef.namespace}.${mfDef.key} (${mfDef.ownerType})`
+                                        : "N/A"}
+                                    </s-text>
+                                  </td>
+                                  <td style={{ padding: "12px 16px", verticalAlign: "middle", textAlign: "right" }}>
+                                    <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                                      <s-button
+                                        type="button"
+                                        variant="primary"
+                                        icon="edit"
+                                        tone="primary"
+                                        accessibilityLabel="Edit Metafield"
+                                        onClick={() => {
+                                          setEditingMetafield({ sectionIndex, metafieldIndex: mfIndex });
+                                          setMetafieldEditData({
+                                            customName: metafield.customName || "",
+                                            tooltipEnabled: metafield.tooltipEnabled || false,
+                                            tooltipText: metafield.tooltipText || "",
+                                          });
+                                        }}
+                                      >
+                                      </s-button>
+                                      <s-button
+                                        type="button"
+                                        variant="primary"
+                                        tone="critical"
+                                        icon="delete"
+                                        onClick={() =>
+                                          removeMetafieldFromSection(sectionIndex, mfIndex)
+                                        }
+                                      >
+                                      </s-button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <s-text style={{ color: "#6d7175", fontStyle: "italic" }}>
+                        Nu există metafields adăugate în această secțiune
+                      </s-text>
+                    )}
 
                     <div
                       style={{ position: "relative", width: "100%" }}
@@ -1521,6 +1795,124 @@ export default function TemplateEditorPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal pentru editare metafield */}
+      {editingMetafield && (() => {
+        const section = sections[editingMetafield.sectionIndex];
+        const metafield = section?.metafields?.[editingMetafield.metafieldIndex];
+        const mfDef = metafieldDefinitions?.find(
+          (mf) => mf.id === metafield?.metafieldDefinitionId
+        );
+        return (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10000,
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setEditingMetafield(null);
+                setMetafieldEditData({ customName: "", tooltipEnabled: false, tooltipText: "" });
+              }
+            }}
+          >
+            <s-box
+              padding="large"
+              borderWidth="base"
+              borderRadius="base"
+              background="base"
+              style={{
+                width: "90%",
+                maxWidth: "500px",
+                maxHeight: "90vh",
+                overflowY: "auto",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <s-stack direction="block" gap="base">
+                <s-heading level="3">
+                  Editează Metafield: {mfDef ? `${mfDef.namespace}.${mfDef.key}` : "Unknown"}
+                </s-heading>
+                
+                <s-text-field
+                  label="Nume personalizat (doar pentru acest template)"
+                  value={metafieldEditData.customName}
+                  onChange={(e) =>
+                    setMetafieldEditData({
+                      ...metafieldEditData,
+                      customName: e.target.value,
+                    })
+                  }
+                  placeholder={mfDef?.name || `${mfDef?.namespace}.${mfDef?.key}`}
+                  helpText="Dacă lăsați gol, se va folosi numele implicit al metafield-ului"
+                />
+
+                <s-checkbox
+                  checked={metafieldEditData.tooltipEnabled}
+                  onChange={(e) =>
+                    setMetafieldEditData({
+                      ...metafieldEditData,
+                      tooltipEnabled: e.target.checked,
+                    })
+                  }
+                  label="Activează tooltip"
+                />
+
+                {metafieldEditData.tooltipEnabled && (
+                  <s-text-field
+                    label="Text tooltip"
+                    value={metafieldEditData.tooltipText}
+                    onChange={(e) =>
+                      setMetafieldEditData({
+                        ...metafieldEditData,
+                        tooltipText: e.target.value,
+                      })
+                    }
+                    placeholder="Introduceți textul tooltip-ului..."
+                    multiline
+                    rows={3}
+                  />
+                )}
+
+                <s-stack direction="inline" gap="tight" style={{ marginTop: "16px" }}>
+                  <s-button
+                    type="button"
+                    variant="primary"
+                    onClick={() => {
+                      updateMetafieldData(
+                        editingMetafield.sectionIndex,
+                        editingMetafield.metafieldIndex,
+                        metafieldEditData
+                      );
+                    }}
+                  >
+                    Salvează
+                  </s-button>
+                  <s-button
+                    type="button"
+                    variant="tertiary"
+                    onClick={() => {
+                      setEditingMetafield(null);
+                      setMetafieldEditData({ customName: "", tooltipEnabled: false, tooltipText: "" });
+                    }}
+                  >
+                    Anulează
+                  </s-button>
+                </s-stack>
+              </s-stack>
+            </s-box>
+          </div>
+        );
+      })()}
     </s-page>
   );
 }
