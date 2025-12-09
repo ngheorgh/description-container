@@ -73,6 +73,7 @@ export async function loader({ request }) {
         id: template.id,
         name: template.name,
         isAccordion: template.isAccordion,
+        seeMoreEnabled: template.seeMoreEnabled || false,
         styling,
         sections,
       },

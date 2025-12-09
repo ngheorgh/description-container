@@ -101,7 +101,7 @@ export async function createTemplate(data, shopDomain) {
     throw new Error("Shop not found");
   }
 
-  const { name, styling, isActive, isAccordion, sections } = data;
+  const { name, styling, isActive, isAccordion, seeMoreEnabled, sections } = data;
 
   return await prisma.specificationTemplate.create({
     data: {
@@ -109,6 +109,7 @@ export async function createTemplate(data, shopDomain) {
       styling: JSON.stringify(styling || {}),
       isActive: isActive !== undefined ? isActive : true,
       isAccordion: isAccordion !== undefined ? isAccordion : false,
+      seeMoreEnabled: seeMoreEnabled !== undefined ? seeMoreEnabled : false,
       shopId: shop.id,
       sections: {
         create: sections?.map((section, sectionIndex) => ({
@@ -175,7 +176,7 @@ export async function updateTemplate(templateId, data, shopDomain) {
     throw new Error("Template not found");
   }
 
-  const { name, styling, isActive, isAccordion, sections } = data;
+  const { name, styling, isActive, isAccordion, seeMoreEnabled, sections } = data;
 
   // Debug: verifică datele primite
   console.log("updateTemplate - Data received:", JSON.stringify({
@@ -203,6 +204,7 @@ export async function updateTemplate(templateId, data, shopDomain) {
       styling: JSON.stringify(styling || {}),
       isActive: isActive !== undefined ? isActive : template.isActive,
       isAccordion: isAccordion !== undefined ? isAccordion : template.isAccordion,
+      seeMoreEnabled: seeMoreEnabled !== undefined ? seeMoreEnabled : template.seeMoreEnabled || false,
       sections: {
         create: sections?.map((section, sectionIndex) => ({
           heading: section.heading,

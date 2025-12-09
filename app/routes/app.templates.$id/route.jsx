@@ -165,6 +165,7 @@ export const action = async ({ request, params }) => {
   const name = formData.get("name");
   const isActive = formData.get("isActive") === "true";
   const isAccordion = formData.get("isAccordion") === "true";
+  const seeMoreEnabled = formData.get("seeMoreEnabled") === "true";
 
   // Validare: Template name nu poate fi gol
   if (!name || name.trim() === "") {
@@ -256,6 +257,7 @@ export const action = async ({ request, params }) => {
           styling,
           isActive,
           isAccordion,
+          seeMoreEnabled,
           sections,
         },
         session.shop
@@ -268,6 +270,7 @@ export const action = async ({ request, params }) => {
           styling,
           isActive,
           isAccordion,
+          seeMoreEnabled,
           sections,
         },
         session.shop
@@ -329,6 +332,9 @@ export default function TemplateEditorPage() {
   );
   const [isAccordion, setIsAccordion] = useState(
     template?.isAccordion || false
+  );
+  const [seeMoreEnabled, setSeeMoreEnabled] = useState(
+    template?.seeMoreEnabled || false
   );
 
   const [openSelectIndex, setOpenSelectIndex] = useState(null);
@@ -410,6 +416,9 @@ export default function TemplateEditorPage() {
     }
     if (template?.isAccordion !== undefined) {
       setIsAccordion(template.isAccordion);
+    }
+    if (template?.seeMoreEnabled !== undefined) {
+      setSeeMoreEnabled(template.seeMoreEnabled);
     }
     if (template?.name) {
       setTemplateName(template.name);
@@ -709,7 +718,7 @@ export default function TemplateEditorPage() {
   console.log("Metafield definitions loaded:", metafieldDefinitions?.length || 0);
 
   // Component pentru secțiune accordion
-  const AccordionSection = ({ section, sectionIndex, styling, metafieldDefinitions }) => {
+  const AccordionSection = ({ section, sectionIndex, styling, metafieldDefinitions, renderMetafieldRow, globalIndexOffset }) => {
     const [isOpen, setIsOpen] = useState(sectionIndex === 0);
     
     return (
@@ -741,7 +750,9 @@ export default function TemplateEditorPage() {
               transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
             }}
           >
-            ▼
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "inline-block", transition: "transform 0.3s ease", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+              <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </span>
         </div>
         {isOpen && section.metafields && section.metafields.length > 0 && (
@@ -749,73 +760,8 @@ export default function TemplateEditorPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
               <tbody>
                 {section.metafields.map((metafield, mfIndex) => {
-                  const mfDef = metafieldDefinitions?.find(
-                    (mf) => mf.id === metafield.metafieldDefinitionId
-                  );
-                  const metafieldName = metafield.customName 
-                    ? metafield.customName
-                    : (mfDef
-                        ? (mfDef.name || `${mfDef.namespace}.${mfDef.key}`)
-                        : "Metafield");
-                  const isOdd = mfIndex % 2 === 0;
-                  const rowBackground = styling.rowBackgroundEnabled
-                    ? (isOdd ? styling.oddRowBackgroundColor : styling.evenRowBackgroundColor)
-                    : styling.tdBackgroundColor;
-                  
-                  return (
-                    <tr key={mfIndex} style={{ borderBottom: styling.rowBorderEnabled ? `${styling.rowBorderWidth} ${styling.rowBorderStyle} ${styling.rowBorderColor}` : "none" }}>
-                      <td
-                        style={{
-                          padding: "8px",
-                          fontWeight: "bold",
-                          width: "40%",
-                          color: styling.textColor,
-                          fontFamily: styling.textFontFamily,
-                          fontSize: styling.textFontSize,
-                          backgroundColor: rowBackground,
-                          textTransform: styling.textTransform,
-                        }}
-                      >
-                        {metafieldName}
-                        {metafield.tooltipEnabled && metafield.tooltipText && (
-                          <span 
-                            title={metafield.tooltipText} 
-                            style={{ 
-                              marginLeft: "8px", 
-                              cursor: "help",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              width: "16px",
-                              height: "16px",
-                              borderRadius: "50%",
-                              backgroundColor: "#202223",
-                              color: "#ffffff",
-                              fontSize: "11px",
-                              fontWeight: "bold",
-                              lineHeight: "1",
-                              verticalAlign: "middle"
-                            }}
-                          >
-                            i
-                          </span>
-                        )}
-                        :
-                      </td>
-                      <td
-                        style={{
-                          padding: "8px",
-                          color: styling.textColor,
-                          fontFamily: styling.textFontFamily,
-                          fontSize: styling.textFontSize,
-                          backgroundColor: rowBackground,
-                          textTransform: styling.textTransform,
-                        }}
-                      >
-                        Valoare exemplu
-                      </td>
-                    </tr>
-                  );
+                  const globalIndex = globalIndexOffset + mfIndex;
+                  return renderMetafieldRow(metafield, globalIndex);
                 })}
               </tbody>
             </table>
@@ -826,7 +772,35 @@ export default function TemplateEditorPage() {
   };
 
   // Component pentru preview
-  const PreviewTable = ({ styling, sections, isAccordion }) => {
+  const PreviewTable = ({ styling, sections, isAccordion, seeMoreEnabled }) => {
+    const [showAll, setShowAll] = useState(!seeMoreEnabled);
+    
+    // Colectează toate metafields-urile din toate secțiunile cu informații despre secțiune
+    const allMetafieldsWithSection = sections.flatMap((section, sectionIndex) => 
+      (section.metafields || []).map((metafield, mfIndex) => ({
+        ...metafield,
+        sectionIndex,
+        sectionHeading: section.heading,
+        mfIndex,
+      }))
+    );
+    
+    const totalRows = allMetafieldsWithSection.length;
+    const displayRows = seeMoreEnabled && !showAll ? allMetafieldsWithSection.slice(0, 10) : allMetafieldsWithSection;
+    const hasMore = seeMoreEnabled && totalRows > 10;
+    
+    // Grupează rândurile afișate pe secțiuni pentru a le renderiza corect
+    const groupedBySection = displayRows.reduce((acc, item) => {
+      if (!acc[item.sectionIndex]) {
+        acc[item.sectionIndex] = {
+          heading: item.sectionHeading,
+          metafields: [],
+        };
+      }
+      acc[item.sectionIndex].metafields.push(item);
+      return acc;
+    }, {});
+    
     const containerStyle = {
       backgroundColor: styling.backgroundColor,
       color: styling.textColor,
@@ -846,6 +820,76 @@ export default function TemplateEditorPage() {
       fontFamily: styling.headingFontFamily,
     };
 
+    const renderMetafieldRow = (metafield, globalIndex) => {
+      const mfDef = metafieldDefinitions?.find(
+        (mf) => mf.id === metafield.metafieldDefinitionId
+      );
+      const metafieldName = metafield.customName 
+        ? metafield.customName
+        : (mfDef
+            ? (mfDef.name || `${mfDef.namespace}.${mfDef.key}`)
+            : "Metafield");
+      const isOdd = globalIndex % 2 === 0;
+      const rowBackground = styling.rowBackgroundEnabled
+        ? (isOdd ? styling.oddRowBackgroundColor : styling.evenRowBackgroundColor)
+        : styling.tdBackgroundColor;
+      
+      return (
+        <tr key={`${metafield.sectionIndex}-${metafield.mfIndex}`} style={{ borderBottom: styling.rowBorderEnabled ? `${styling.rowBorderWidth} ${styling.rowBorderStyle} ${styling.rowBorderColor}` : "none" }}>
+          <td
+            style={{
+              padding: "8px",
+              fontWeight: "bold",
+              width: "40%",
+              color: styling.textColor,
+              fontFamily: styling.textFontFamily,
+              fontSize: styling.textFontSize,
+              backgroundColor: rowBackground,
+              textTransform: styling.textTransform,
+            }}
+          >
+            {metafieldName}
+            {metafield.tooltipEnabled && metafield.tooltipText && (
+              <span 
+                title={metafield.tooltipText} 
+                style={{ 
+                  marginLeft: "8px", 
+                  cursor: "help",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "16px",
+                  height: "16px",
+                  borderRadius: "50%",
+                  backgroundColor: "#202223",
+                  color: "#ffffff",
+                  fontSize: "11px",
+                  fontWeight: "bold",
+                  lineHeight: "1",
+                  verticalAlign: "middle"
+                }}
+              >
+                i
+              </span>
+            )}
+            :
+          </td>
+          <td
+            style={{
+              padding: "8px",
+              color: styling.textColor,
+              fontFamily: styling.textFontFamily,
+              fontSize: styling.textFontSize,
+              backgroundColor: rowBackground,
+              textTransform: styling.textTransform,
+            }}
+          >
+            Valoare exemplu
+          </td>
+        </tr>
+      );
+    };
+
     return (
       <div style={containerStyle}>
         {sections.length === 0 ? (
@@ -853,107 +897,92 @@ export default function TemplateEditorPage() {
             <p>Adaugă secțiuni pentru a vedea preview-ul</p>
           </div>
         ) : isAccordion ? (
-          sections.map((section, sectionIndex) => {
-            if (!section.heading) return null;
-            return (
-              <AccordionSection
-                key={sectionIndex}
-                section={section}
-                sectionIndex={sectionIndex}
-                styling={styling}
-                metafieldDefinitions={metafieldDefinitions}
-              />
-            );
-          })
-        ) : (
-          sections.map((section, sectionIndex) => {
-            if (!section.heading) return null;
-            
-            return (
-              <div key={sectionIndex} style={{ marginBottom: sectionIndex < sections.length - 1 ? "20px" : "0" }}>
-                <h3 style={headingStyle}>{section.heading}</h3>
-                {section.metafields && section.metafields.length > 0 ? (
-                  <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
-                    <tbody>
-                      {section.metafields.map((metafield, mfIndex) => {
-                        const mfDef = metafieldDefinitions?.find(
-                          (mf) => mf.id === metafield.metafieldDefinitionId
-                        );
-                        const metafieldName = metafield.customName 
-                          ? metafield.customName
-                          : (mfDef
-                              ? (mfDef.name || `${mfDef.namespace}.${mfDef.key}`)
-                              : "Metafield");
-                        const isOdd = mfIndex % 2 === 0; // 0-based index, so 0, 2, 4 are odd rows
-                        const rowBackground = styling.rowBackgroundEnabled
-                          ? (isOdd ? styling.oddRowBackgroundColor : styling.evenRowBackgroundColor)
-                          : styling.tdBackgroundColor;
-                        
-                        return (
-                          <tr key={mfIndex} style={{ borderBottom: styling.rowBorderEnabled ? `${styling.rowBorderWidth} ${styling.rowBorderStyle} ${styling.rowBorderColor}` : "none" }}>
-                            <td
-                              style={{
-                                padding: "8px",
-                                fontWeight: "bold",
-                                width: "40%",
-                                color: styling.textColor,
-                                fontFamily: styling.textFontFamily,
-                                fontSize: styling.textFontSize,
-                                backgroundColor: rowBackground,
-                                textTransform: styling.textTransform,
-                              }}
-                            >
-                              {metafieldName}
-                              {metafield.tooltipEnabled && metafield.tooltipText && (
-                                <span 
-                                  title={metafield.tooltipText} 
-                                  style={{ 
-                                    marginLeft: "8px", 
-                                    cursor: "help",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    width: "16px",
-                                    height: "16px",
-                                    borderRadius: "50%",
-                                    backgroundColor: "#202223",
-                                    color: "#ffffff",
-                                    fontSize: "11px",
-                                    fontWeight: "bold",
-                                    lineHeight: "1",
-                                    verticalAlign: "middle"
-                                  }}
-                                >
-                                  i
-                                </span>
-                              )}
-                              :
-                            </td>
-                            <td
-                              style={{
-                                padding: "8px",
-                                color: styling.textColor,
-                                fontFamily: styling.textFontFamily,
-                                fontSize: styling.textFontSize,
-                                backgroundColor: rowBackground,
-                                textTransform: styling.textTransform,
-                              }}
-                            >
-                              Valoare exemplu
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p style={{ marginTop: "10px", color: styling.textColor, fontStyle: "italic" }}>
-                    Nu există metafield-uri în această secțiune
-                  </p>
-                )}
+          <>
+            {Object.entries(groupedBySection).map(([sectionIndex, sectionData]) => {
+              const sectionIdx = parseInt(sectionIndex);
+              // Calculează offset-ul global pentru indexarea corectă a rândurilor
+              const globalIndexOffset = displayRows.findIndex(mf => mf.sectionIndex === sectionIdx);
+              
+              return (
+                <AccordionSection
+                  key={sectionIdx}
+                  section={sectionData}
+                  sectionIndex={sectionIdx}
+                  styling={styling}
+                  metafieldDefinitions={metafieldDefinitions}
+                  renderMetafieldRow={renderMetafieldRow}
+                  globalIndexOffset={globalIndexOffset >= 0 ? globalIndexOffset : 0}
+                />
+              );
+            })}
+            {hasMore && !showAll && (
+              <div style={{ textAlign: "center", marginTop: "12px" }}>
+                <button
+                  onClick={() => setShowAll(true)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "8px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: styling.textColor || "#000000",
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "inline-block", transition: "transform 0.3s ease" }}>
+                    <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
               </div>
-            );
-          })
+            )}
+          </>
+        ) : (
+          <>
+            {Object.entries(groupedBySection).map(([sectionIndex, sectionData]) => {
+              const sectionIdx = parseInt(sectionIndex);
+              return (
+                <div key={sectionIdx} style={{ marginBottom: sectionIdx < sections.length - 1 ? "20px" : "0" }}>
+                  <h3 style={headingStyle}>{sectionData.heading}</h3>
+                  {sectionData.metafields && sectionData.metafields.length > 0 ? (
+                    <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+                      <tbody>
+                        {sectionData.metafields.map((metafield, idx) => {
+                          const globalIndex = displayRows.indexOf(metafield);
+                          return renderMetafieldRow(metafield, globalIndex);
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p style={{ marginTop: "10px", color: styling.textColor, fontStyle: "italic" }}>
+                      Nu există metafield-uri în această secțiune
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+            {hasMore && !showAll && (
+              <div style={{ textAlign: "center", marginTop: "12px" }}>
+                <button
+                  onClick={() => setShowAll(true)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "8px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: styling.textColor || "#000000",
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "inline-block", transition: "transform 0.3s ease" }}>
+                    <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     );
@@ -1042,6 +1071,7 @@ export default function TemplateEditorPage() {
         <input type="hidden" name="sectionCount" value={sections.length} />
         <input type="hidden" name="isActive" value={isActive ? "true" : "false"} />
         <input type="hidden" name="isAccordion" value={isAccordion ? "true" : "false"} />
+        <input type="hidden" name="seeMoreEnabled" value={seeMoreEnabled ? "true" : "false"} />
             <input type="hidden" name="backgroundColor" value={styling.backgroundColor} />
             <input type="hidden" name="textColor" value={styling.textColor} />
             <input type="hidden" name="headingColor" value={styling.headingColor} />
@@ -1133,14 +1163,6 @@ export default function TemplateEditorPage() {
               onChange={(e) => setIsActive(e.target.checked)}
               value={isActive ? "true" : "false"}
               label = "Template activ"	
-            >
-            </s-checkbox>
-            <s-checkbox
-              name="isAccordion"
-              checked={isAccordion}
-              onChange={(e) => setIsAccordion(e.target.checked)}
-              value={isAccordion ? "true" : "false"}
-              label = "Afișează ca accordion (expandabil)"
             >
             </s-checkbox>
           </s-stack>
@@ -1448,6 +1470,26 @@ export default function TemplateEditorPage() {
             >
               ➕ Add New Section
             </s-button>
+          </s-stack>
+          
+          {/* Setări pentru afișare */}
+          <s-stack direction="block" gap="base" style={{ marginTop: "24px" }}>
+            <s-switch
+              id="accordion-switch"
+              name="isAccordion"
+              checked={isAccordion}
+              onChange={(e) => setIsAccordion(e.target.checked)}
+              value={isAccordion ? "true" : "false"}
+              label="Afișează ca accordion (expandabil)"
+            />
+            <s-switch
+              id="see-more-switch"
+              name="seeMoreEnabled"
+              checked={seeMoreEnabled}
+              onChange={(e) => setSeeMoreEnabled(e.target.checked)}
+              value={seeMoreEnabled ? "true" : "false"}
+              label="See more (afișează primele 10 rânduri)"
+            />
           </s-stack>
         </s-section>
       </div>
@@ -1960,7 +2002,7 @@ export default function TemplateEditorPage() {
             <h2 style={{ margin: "0 0 16px 0", fontSize: "18px", fontWeight: "600" }}>Preview</h2>
           </div>
           <div style={{ backgroundColor: "#ffffff", padding: "20px", borderRadius: "4px", minHeight: "400px" }}>
-            <PreviewTable styling={styling} sections={sections} isAccordion={isAccordion} />
+            <PreviewTable styling={styling} sections={sections} isAccordion={isAccordion} seeMoreEnabled={seeMoreEnabled} />
           </div>
         </div>
       </div>

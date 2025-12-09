@@ -93,14 +93,15 @@ model MetafieldDefinition {
 }
 
 model SpecificationTemplate {
-  id          String   @id @default(uuid())
-  name        String
-  shopId      String
-  styling     String   // JSON string with styling config
-  isActive    Boolean  @default(true)
-  isAccordion Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  name          String
+  shopId        String
+  styling       String   // JSON string with styling config
+  isActive      Boolean  @default(true)
+  isAccordion   Boolean  @default(false)
+  seeMoreEnabled Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
   shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   sections    TemplateSection[]

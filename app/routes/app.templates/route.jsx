@@ -516,7 +516,7 @@ export default function TemplatesPage() {
   return (
     <s-page heading="Template-uri de Specificații">
         <s-button slot="primary-action" href="/app/templates/new" variant="primary">
-          + Creează Template Nou
+          + Create New Template
         </s-button>
 
         {templates.length === 0 ? (
@@ -530,13 +530,13 @@ export default function TemplatesPage() {
             }}>
               <div style={{ fontSize: "48px", marginBottom: "20px" }}>📋</div>
               <s-heading level="2" style={{ marginBottom: "16px" }}>
-                Nu ai creat încă niciun template
+                You don't have any templates yet
               </s-heading>
               <s-paragraph tone="subdued" style={{ marginBottom: "24px", maxWidth: "500px", margin: "0 auto 24px" }}>
-                Creează primul tău template de specificații pentru a începe să organizezi metafield-urile produselor tale într-un mod structurat și profesional.
+                Create your first template to start organizing your product metafields in a structured and professional way.
               </s-paragraph>
               <s-button href="/app/templates/new" variant="primary" size="large">
-                + Creează Primul Template
+                + Create Your First Template
               </s-button>
             </div>
           </s-section>
@@ -579,9 +579,10 @@ export default function TemplatesPage() {
                       </div>
                       <s-stack direction="inline" gap="tight" style={{ flexWrap: "wrap" }}>
                         <s-badge
-                          status={template.isActive ? "success" : "attention"}
+                          status={template.isActive ? "success" : "critical"}
+                          tone={template.isActive ? "success" : "critical"}
                         >
-                          {template.isActive ? "✓ Activ" : "⚠ Inactiv"}
+                          {template.isActive ? "✓ Active" : "⚠ Inactive"}
                         </s-badge>
                         {template.isAccordion && (
                           <s-badge tone="info">Accordion</s-badge>
