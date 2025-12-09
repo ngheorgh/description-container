@@ -3,6 +3,8 @@
   Se conectează la API-ul app-ului pentru a obține template-ul
 {% endcomment %}
 
+<link rel="stylesheet" href="{{ 'specification-table.css' | asset_url }}">
+
 {% assign product_id = product.id | default: block.settings.product.id %}
 {% assign collection_id = collection.id | default: block.settings.collection.id %}
 {% assign shop_domain = shop.permanent_domain %}
@@ -557,16 +559,31 @@
     // Citește setările din container
     const firstColumnWidth = container.dataset.firstColumnWidth || '40';
     
-    let html = '<div id="specification-table-' + template.id + '" style="';
-    html += 'background-color: ' + (styling.backgroundColor || '#ffffff') + '; ';
-    html += 'color: ' + (styling.textColor || '#000000') + '; ';
+    // Construiește CSS variables pentru stilurile dinamice
+    let cssVars = '--dc-bg-color: ' + (styling.backgroundColor || '#ffffff') + '; ';
+    cssVars += '--dc-text-color: ' + (styling.textColor || '#000000') + '; ';
+    cssVars += '--dc-heading-color: ' + (styling.headingColor || '#000000') + '; ';
+    cssVars += '--dc-heading-font-size: ' + (styling.headingFontSize || '18px') + '; ';
+    cssVars += '--dc-heading-font-weight: ' + (styling.headingFontWeight || 'bold') + '; ';
+    cssVars += '--dc-heading-font-family: ' + (styling.headingFontFamily || 'inherit') + '; ';
+    cssVars += '--dc-text-font-size: ' + (styling.textFontSize || '14px') + '; ';
+    cssVars += '--dc-text-font-family: ' + (styling.textFontFamily || 'inherit') + '; ';
+    cssVars += '--dc-text-transform: ' + (styling.textTransform || 'none') + '; ';
+    cssVars += '--dc-border-radius: ' + (styling.borderRadius || '0px') + '; ';
+    cssVars += '--dc-padding: ' + (styling.padding || '20px') + '; ';
+    cssVars += '--dc-first-column-width: ' + firstColumnWidth + '%; ';
     if (styling.sectionBorderEnabled) {
-      html += 'border: ' + (styling.sectionBorderWidth || '1px') + ' ' + (styling.sectionBorderStyle || 'solid') + ' ' + (styling.sectionBorderColor || '#000000') + '; ';
+      cssVars += '--dc-border: ' + (styling.sectionBorderWidth || '1px') + ' ' + (styling.sectionBorderStyle || 'solid') + ' ' + (styling.sectionBorderColor || '#000000') + '; ';
+    } else {
+      cssVars += '--dc-border: none; ';
     }
-    html += 'border-radius: ' + (styling.borderRadius || '0px') + '; ';
-    html += 'padding: ' + (styling.padding || '20px') + '; ';
-    html += 'font-family: ' + (styling.textFontFamily || 'inherit') + ';';
-    html += '">';
+    cssVars += '--dc-row-border: ' + (styling.rowBorderEnabled ? (styling.rowBorderWidth || '1px') + ' ' + (styling.rowBorderStyle || 'solid') + ' ' + (styling.rowBorderColor || '#000000') : 'none') + '; ';
+    cssVars += '--dc-odd-row-bg: ' + (styling.oddRowBackgroundColor || '#f0f0f0') + '; ';
+    cssVars += '--dc-even-row-bg: ' + (styling.evenRowBackgroundColor || '#ffffff') + '; ';
+    cssVars += '--dc-td-bg: ' + (styling.tdBackgroundColor || 'transparent') + '; ';
+    cssVars += '--dc-row-bg-enabled: ' + (styling.rowBackgroundEnabled ? '1' : '0') + '; ';
+    
+    let html = '<div id="specification-table-' + template.id + '" class="dc_container" style="' + cssVars + '">';
     
     // Colectează toate metafields-urile din toate secțiunile cu informații despre secțiune
     const allMetafieldsWithSection = [];
@@ -607,23 +624,12 @@
       Object.keys(groupedBySection).forEach(sectionIndex => {
         const sectionIdx = parseInt(sectionIndex);
         const sectionData = groupedBySection[sectionIndex];
-        html += '<div class="spec-section" style="margin-bottom: 20px;">';
-        html += '<div class="spec-section-header" style="';
-        html += 'font-size: ' + (styling.headingFontSize || '18px') + '; ';
-        html += 'font-weight: ' + (styling.headingFontWeight || 'bold') + '; ';
-        html += 'font-family: ' + (styling.headingFontFamily || 'inherit') + '; ';
-        html += 'color: ' + (styling.headingColor || '#000000') + '; ';
-        html += 'cursor: pointer; padding: 10px; ';
-        html += 'background-color: ' + (styling.backgroundColor || '#ffffff') + '; ';
-        html += 'border-bottom: 1px solid ' + (styling.textColor || '#000000') + ';';
-        html += 'display: flex; align-items: center; justify-content: space-between;';
-        html += '" onclick="toggleSpecSection(' + sectionIdx + ', \'' + template.id + '\')">';
+        html += '<div class="dc_section">';
+        html += '<div class="dc_section_header" onclick="toggleSpecSection(' + sectionIdx + ', \'' + template.id + '\')">';
         html += '<span>' + escapeHtml(sectionData.heading) + '</span>';
-        html += '<span class="spec-accordion-arrow" id="spec-arrow-' + template.id + '-' + sectionIdx + '" style="';
-        html += 'display: inline-block; transition: transform 0.3s ease; margin-left: 10px; color: ' + (styling.headingColor || '#000000') + ';';
-        html += '">' + arrowDownSvg + '</span>';
+        html += '<span class="dc_accordion_arrow" id="spec-arrow-' + template.id + '-' + sectionIdx + '">' + arrowDownSvg + '</span>';
         html += '</div>';
-        html += '<div id="spec-section-' + template.id + '-' + sectionIdx + '" class="spec-section-content" style="display: none; padding: 10px;">';
+        html += '<div id="spec-section-' + template.id + '-' + sectionIdx + '" class="dc_section_content" style="display: none;">';
         html += renderSectionTable(sectionData, styling, firstColumnWidth, false, template.id, sectionIdx, displayRows);
         html += '</div>';
         html += '</div>';
@@ -632,14 +638,8 @@
       Object.keys(groupedBySection).forEach(sectionIndex => {
         const sectionIdx = parseInt(sectionIndex);
         const sectionData = groupedBySection[sectionIndex];
-        html += '<div style="margin-bottom: 20px;">';
-        html += '<h3 style="';
-        html += 'font-size: ' + (styling.headingFontSize || '18px') + '; ';
-        html += 'font-weight: ' + (styling.headingFontWeight || 'bold') + '; ';
-        html += 'font-family: ' + (styling.headingFontFamily || 'inherit') + '; ';
-        html += 'color: ' + (styling.headingColor || '#000000') + '; ';
-        html += 'margin-bottom: 10px;';
-        html += '">';
+        html += '<div class="dc_section">';
+        html += '<h3 class="dc_heading">';
         html += escapeHtml(sectionData.heading);
         html += '</h3>';
         html += renderSectionTable(sectionData, styling, firstColumnWidth, false, template.id, sectionIdx, displayRows);
@@ -649,18 +649,14 @@
     
     // Adaugă butonul "See more" o singură dată la final, dacă este necesar
     if (hasMore) {
-      html += '<div style="text-align: center; margin-top: 12px;background-color:aliceblue;">';
-      html += '<button onclick="showAllTableRows(\'' + template.id + '\', ' + totalRows + ')" style="';
-      html += 'background: none; border: none; cursor: pointer; padding: 8px; ';
-      html += 'display: inline-flex; align-items: center; justify-content: center; ';
-      html += 'color: ' + (styling.textColor || '#000000') + ';';
-      html += '">';
-      html += '<span id="see-more-arrow-' + template.id + '" style="display: inline-block; transition: transform 0.3s ease;">' + arrowDownSvg + '</span>';
+      html += '<div class="dc_see_more">';
+      html += '<button class="dc_see_more_button" onclick="showAllTableRows(\'' + template.id + '\', ' + totalRows + ')">';
+      html += '<span id="see-more-arrow-' + template.id + '" class="dc_see_more_arrow">' + arrowDownSvg + '</span>';
       html += '</button>';
       html += '</div>';
       
       // Adaugă rândurile ascunse
-      html += '<div id="spec-table-hidden-' + template.id + '" style="display: none;">';
+      html += '<div id="spec-table-hidden-' + template.id + '" class="dc_hidden">';
       const hiddenRows = allMetafieldsWithSection.slice(10);
       const hiddenGroupedBySection = {};
       hiddenRows.forEach(item => {
@@ -677,16 +673,10 @@
         const sectionIdx = parseInt(sectionIndex);
         const sectionData = hiddenGroupedBySection[sectionIndex];
         if (template.isAccordion) {
-          html += '<div id="spec-section-hidden-' + template.id + '-' + sectionIdx + '" style="margin-bottom: 20px; padding: 10px;">';
+          html += '<div id="spec-section-hidden-' + template.id + '-' + sectionIdx + '" class="dc_section">';
         } else {
-          html += '<div style="margin-bottom: 20px;">';
-          html += '<h3 style="';
-          html += 'font-size: ' + (styling.headingFontSize || '18px') + '; ';
-          html += 'font-weight: ' + (styling.headingFontWeight || 'bold') + '; ';
-          html += 'font-family: ' + (styling.headingFontFamily || 'inherit') + '; ';
-          html += 'color: ' + (styling.headingColor || '#000000') + '; ';
-          html += 'margin-bottom: 10px;';
-          html += '">';
+          html += '<div class="dc_section">';
+          html += '<h3 class="dc_heading">';
           html += escapeHtml(sectionData.heading);
           html += '</h3>';
         }
@@ -703,8 +693,8 @@
   function renderSectionTable(section, styling, firstColumnWidth, seeMoreEnabled, templateId, sectionIndex, allDisplayRows) {
     const tableId = 'spec-table-' + templateId + '-' + sectionIndex;
     
-    let html = '<div id="' + tableId + '-container">';
-    html += '<table style="width: 100%; border-collapse: collapse;">';
+    let html = '<div id="' + tableId + '-container" class="dc_table_container">';
+    html += '<table class="dc_table">';
     html += '<tbody>';
     
     // Renderizează fiecare metafield din template
@@ -713,41 +703,29 @@
       // Calculează indexul global pentru colorarea corectă a rândurilor
       const globalIndex = allDisplayRows ? allDisplayRows.indexOf(metafield) : index;
       const isOdd = globalIndex % 2 === 0;
-      html += '<tr style="';
-      if (styling.rowBorderEnabled) {
-        html += 'border-bottom: ' + (styling.rowBorderWidth || '1px') + ' ' + (styling.rowBorderStyle || 'solid') + ' ' + (styling.rowBorderColor || '#000000') + '; ';
-      }
+      
+      // Construiește stiluri inline doar pentru background (dinamic bazat pe index)
+      let rowStyle = '';
       if (styling.rowBackgroundEnabled) {
-        html += 'background-color: ' + (isOdd ? (styling.oddRowBackgroundColor || '#f0f0f0') : (styling.evenRowBackgroundColor || '#ffffff')) + '; ';
+        rowStyle = 'background-color: ' + (isOdd ? (styling.oddRowBackgroundColor || '#f0f0f0') : (styling.evenRowBackgroundColor || '#ffffff')) + '; ';
       } else if (styling.tdBackgroundColor && styling.tdBackgroundColor !== 'transparent') {
-        html += 'background-color: ' + styling.tdBackgroundColor + '; ';
+        rowStyle = 'background-color: ' + styling.tdBackgroundColor + '; ';
       }
-      html += '">';
-      html += '<td style="';
-      html += 'padding: 8px; font-weight: bold; width: ' + (firstColumnWidth || '40') + '%; ';
-      html += 'color: ' + (styling.textColor || '#000000') + '; ';
-      html += 'font-family: ' + (styling.textFontFamily || 'inherit') + '; ';
-      html += 'font-size: ' + (styling.textFontSize || '14px') + '; ';
-      html += 'text-transform: ' + (styling.textTransform || 'none') + ';';
-      html += '">';
+      
+      html += '<tr class="dc_table_tr"' + (rowStyle ? ' style="' + rowStyle + '"' : '') + '>';
+      html += '<td class="dc_table_td_label">';
       // Folosește customName dacă există, altfel name sau namespace.key
       const displayName = metafield.customName || metafield.name || metafield.namespace + '.' + metafield.key;
       let nameHtml = escapeHtml(displayName);
       
       // Adaugă tooltip dacă este activat
       if (metafield.tooltipEnabled && metafield.tooltipText) {
-        nameHtml += ' <span title="' + escapeHtml(metafield.tooltipText) + '" style="margin-left: 8px; cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background-color: #202223; color: #ffffff; font-size: 11px; font-weight: bold; line-height: 1; vertical-align: middle;">i</span>';
+        nameHtml += ' <span class="dc_tooltip" title="' + escapeHtml(metafield.tooltipText) + '">i</span>';
       }
       
       html += nameHtml + '  :';
       html += '</td>';
-      html += '<td style="';
-      html += 'padding: 8px; ';
-      html += 'color: ' + (styling.textColor || '#000000') + '; ';
-      html += 'font-family: ' + (styling.textFontFamily || 'inherit') + '; ';
-      html += 'font-size: ' + (styling.textFontSize || '14px') + '; ';
-      html += 'text-transform: ' + (styling.textTransform || 'none') + ';';
-      html += '" data-namespace="' + escapeHtml(metafield.namespace) + '" data-key="' + escapeHtml(metafield.key) + '" data-owner-type="' + escapeHtml(metafield.ownerType || 'PRODUCT') + '" data-type="' + escapeHtml(metafield.type || 'single_line_text_field') + '">';
+      html += '<td class="dc_table_td_value" data-namespace="' + escapeHtml(metafield.namespace) + '" data-key="' + escapeHtml(metafield.key) + '" data-owner-type="' + escapeHtml(metafield.ownerType || 'PRODUCT') + '" data-type="' + escapeHtml(metafield.type || 'single_line_text_field') + '">';
       // Valoarea va fi populată din obiectul JavaScript construit în Liquid
       // Folosim un placeholder care va fi înlocuit după ce se construiește obiectul
       html += '<span data-metafield-value data-namespace="' + escapeHtml(metafield.namespace) + '" data-key="' + escapeHtml(metafield.key) + '" data-owner-type="' + escapeHtml(metafield.ownerType || 'PRODUCT') + '" data-type="' + escapeHtml(metafield.type || 'single_line_text_field') + '">Loading...</span>';

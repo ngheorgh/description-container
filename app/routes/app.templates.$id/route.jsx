@@ -514,7 +514,7 @@ export default function TemplateEditorPage() {
   useEffect(() => {
     if (fetcher.data?.success) {
       shopify.toast.show(
-        `Template ${isNew ? "creat" : "actualizat"} cu succes!`
+        `Template ${isNew ? "created" : "updated"} successfully!`
       );
       navigate("/app/templates");
     } else if (fetcher.data?.success === false) {
@@ -884,7 +884,7 @@ export default function TemplateEditorPage() {
               textTransform: styling.textTransform,
             }}
           >
-            Valoare exemplu
+            Example value
           </td>
         </tr>
       );
@@ -894,7 +894,7 @@ export default function TemplateEditorPage() {
       <div style={containerStyle}>
         {sections.length === 0 ? (
           <div style={{ padding: "20px", textAlign: "center", color: styling.textColor }}>
-            <p>Adaugă secțiuni pentru a vedea preview-ul</p>
+            <p>Add sections to see the preview</p>
           </div>
         ) : isAccordion ? (
           <>
@@ -955,7 +955,7 @@ export default function TemplateEditorPage() {
                     </table>
                   ) : (
                     <p style={{ marginTop: "10px", color: styling.textColor, fontStyle: "italic" }}>
-                      Nu există metafield-uri în această secțiune
+                      Metafields does not exist in this section
                     </p>
                   )}
                 </div>
@@ -1140,7 +1140,7 @@ export default function TemplateEditorPage() {
                 ))}
 
             <s-button type="submit" variant="primary">
-              {isNew ? "Creează Template" : "Salvează Modificări"}
+              {isNew ? "Create Template" : "Save Changes"}
             </s-button>
           </Form>
         </div>
@@ -1148,11 +1148,11 @@ export default function TemplateEditorPage() {
 
       {/* Secțiuni de bază - Informații și Metafield-uri */}
       <div style={{ marginBottom: "20px" }}>
-        <s-section heading="Informații de bază">
+        <s-section heading="Basic information">
           <s-stack direction="block" gap="base">
             <s-text-field
               name="name"
-              label="Nume Template"
+              label="Template name"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value || e.currentTarget?.value || "")}
               required
@@ -1162,7 +1162,7 @@ export default function TemplateEditorPage() {
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
               value={isActive ? "true" : "false"}
-              label = "Template activ"	
+              label = "Template active"	
             >
             </s-checkbox>
           </s-stack>
@@ -1319,7 +1319,7 @@ export default function TemplateEditorPage() {
                       </div>
                     ) : (
                       <s-text style={{ color: "#6d7175", fontStyle: "italic" }}>
-                        Nu există metafields adăugate în această secțiune
+                        No metafields added in this section
                       </s-text>
                     )}
 
@@ -1366,10 +1366,10 @@ export default function TemplateEditorPage() {
                           >
                             <s-stack direction="block" gap="base" style={{ flexShrink: 0 }}>
                               <s-text emphasis="strong">
-                                Selectează metafield-uri ({getAvailableMetafields(sectionIndex).length} disponibile):
+                                Select metafields ({getAvailableMetafields(sectionIndex).length} available):
                               </s-text>
                               <s-text-field
-                                label="Caută metafield-uri"
+                                label="Search metafields"
                                 value={metafieldSearchTerm[sectionIndex] || ""}
                                 onChange={(e) => {
                                   setMetafieldSearchTerm({
@@ -1377,7 +1377,7 @@ export default function TemplateEditorPage() {
                                     [sectionIndex]: e.target.value,
                                   });
                                 }}
-                                placeholder="Caută după nume, namespace, key..."
+                                placeholder="Search by name, namespace, key..."
                                 autoComplete="off"
                               />
                             </s-stack>
@@ -1401,8 +1401,8 @@ export default function TemplateEditorPage() {
                                 {getFilteredMetafields(sectionIndex).length === 0 ? (
                                   <s-text tone="subdued" style={{ padding: "16px", textAlign: "center" }}>
                                     {metafieldSearchTerm[sectionIndex] 
-                                      ? "Nu s-au găsit metafield-uri care să corespundă căutării"
-                                      : "Nu există metafield-uri disponibile"}
+                                      ? "No metafields found that match the search"
+                                      : "No metafields available"}
                                   </s-text>
                                 ) : (
                                   getFilteredMetafields(sectionIndex).map((mf) => {
@@ -1437,7 +1437,7 @@ export default function TemplateEditorPage() {
                                     setOpenSelectIndex(null);
                                   }}
                                 >
-                                  Adaugă Selectate
+                                  Add Selected
                                 </s-button>
                                 <s-button
                                   type="button"
@@ -1452,7 +1452,7 @@ export default function TemplateEditorPage() {
                                     setSelectedMetafieldsForSection(newSelected);
                                   }}
                                 >
-                                  Anulează
+                                  Cancel
                                 </s-button>
                               </s-stack>
                           </s-box>
@@ -1467,8 +1467,9 @@ export default function TemplateEditorPage() {
               type="button" 
               onClick={addSection}
               variant="success"
+              icon="add"
             >
-              ➕ Add New Section
+               Add New Section
             </s-button>
           </s-stack>
           
@@ -1480,7 +1481,7 @@ export default function TemplateEditorPage() {
               checked={isAccordion}
               onChange={(e) => setIsAccordion(e.target.checked)}
               value={isAccordion ? "true" : "false"}
-              label="Afișează ca accordion (expandabil)"
+              label="Show as accordion (expandable)"
             />
             <s-switch
               id="see-more-switch"
@@ -1488,7 +1489,7 @@ export default function TemplateEditorPage() {
               checked={seeMoreEnabled}
               onChange={(e) => setSeeMoreEnabled(e.target.checked)}
               value={seeMoreEnabled ? "true" : "false"}
-              label="See more (afișează primele 10 rânduri)"
+              label="See more button (Show first 10 rows)"
             />
           </s-stack>
         </s-section>
@@ -1497,7 +1498,7 @@ export default function TemplateEditorPage() {
       <div style={{ display: "flex", gap: "20px", height: "calc(100vh - 400px)", minHeight: "600px" }}>
         {/* Partea stângă - Stiluri (30%) */}
         <div style={{ width: "30%", overflowY: "auto", paddingRight: "10px" }}>
-        <s-section heading="Stiluri">
+        <s-section heading="Styles">
           <s-stack direction="block" gap="base">
             {/* 1. Section Styling */}
             <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
@@ -1505,7 +1506,7 @@ export default function TemplateEditorPage() {
                 <s-heading level="3">Section Styling</s-heading>
                 <s-stack direction="block" gap="base">
               <s-color-field
-                label="Culoare Background"
+                label="Background Color"
                 name="backgroundColor"
                     value={styling.backgroundColor}
                     alpha
@@ -1536,7 +1537,7 @@ export default function TemplateEditorPage() {
                       <s-stack direction="block" gap="base" style={{ marginLeft: "24px" }}>
                         <s-stack direction="inline" gap="base">
               <s-color-field
-                            label="Culoare Section Border"
+                            label="Section Border Color"
                             name="sectionBorderColor"
                             value={styling.sectionBorderColor}
                 alpha
@@ -1651,7 +1652,7 @@ export default function TemplateEditorPage() {
                 <s-heading level="3">Header Styling</s-heading>
                 <s-stack direction="block" gap="base">
               <s-color-field
-                label="Culoare Heading"
+                label="Heading Color"
                 name="headingColor"
                     value={styling.headingColor}
                     alpha
@@ -1667,7 +1668,7 @@ export default function TemplateEditorPage() {
             <s-stack direction="inline" gap="base">
                     <div style={{ width: "100%" }}>
                       <RangeSlider
-                label="Mărime Font Heading"
+                label="Heading Font Size"
                         value={pxToNumber(styling.headingFontSize)}
                         onChange={(value) => {
                           setStyling((prev) => ({
@@ -1688,7 +1689,7 @@ export default function TemplateEditorPage() {
                     </div>
                     <div style={{ width: "100%" }}>
                       <RangeSlider
-                label="Grosime Font Heading"
+                label="Heading Font Weight"
                         value={parseInt(styling.headingFontWeight) || 400}
                         onChange={(value) => {
                           setStyling((prev) => ({
@@ -1709,7 +1710,7 @@ export default function TemplateEditorPage() {
                     </div>
               <s-select
                 name="headingFontFamily"
-                label="Font Heading"
+                label="Heading Font"
                 value={styling.headingFontFamily}
                       onInput={(e) => {
                         const value = e.currentTarget?.value || e.target?.value || e.detail?.value;
@@ -1751,7 +1752,7 @@ export default function TemplateEditorPage() {
                 <s-heading level="3">Spec Styling</s-heading>
                 <s-stack direction="block" gap="base">
                   <s-color-field
-                    label="Culoare Text"
+                    label="Text Color"
                     name="textColor"
                     value={styling.textColor}
                     alpha
@@ -1767,7 +1768,7 @@ export default function TemplateEditorPage() {
             <s-stack direction="inline" gap="base">
                     <div style={{ width: "100%" }}>
                       <RangeSlider
-                label="Mărime Font Text"
+                label="Font Size Text"
                         value={pxToNumber(styling.textFontSize)}
                         onChange={(value) => {
                           setStyling((prev) => ({
@@ -2051,11 +2052,11 @@ export default function TemplateEditorPage() {
             >
               <s-stack direction="block" gap="base">
                 <s-heading level="3">
-                  Editează Metafield: {mfDef ? `${mfDef.namespace}.${mfDef.key}` : "Unknown"}
+                  Edit Metafield: {mfDef ? `${mfDef.namespace}.${mfDef.key}` : "Unknown"}
                 </s-heading>
                 
                 <s-text-field
-                  label="Nume personalizat (doar pentru acest template)"
+                  label="Custom name (only for this template)"
                   value={metafieldEditData.customName}
                   onChange={(e) =>
                     setMetafieldEditData({
@@ -2064,7 +2065,7 @@ export default function TemplateEditorPage() {
                     })
                   }
                   placeholder={mfDef?.name || `${mfDef?.namespace}.${mfDef?.key}`}
-                  helpText="Dacă lăsați gol, se va folosi numele implicit al metafield-ului"
+                  helpText="If left blank, the default name of the metafield will be used"
                 />
 
                 <s-checkbox
@@ -2075,12 +2076,12 @@ export default function TemplateEditorPage() {
                       tooltipEnabled: e.target.checked,
                     })
                   }
-                  label="Activează tooltip"
+                  label="Enable tooltip"
                 />
 
                 {metafieldEditData.tooltipEnabled && (
                   <s-text-field
-                    label="Text tooltip"
+                    label="Tooltip text"
                     value={metafieldEditData.tooltipText}
                     onChange={(e) =>
                       setMetafieldEditData({
@@ -2088,7 +2089,7 @@ export default function TemplateEditorPage() {
                         tooltipText: e.target.value,
                       })
                     }
-                    placeholder="Introduceți textul tooltip-ului..."
+                    placeholder="Enter the tooltip text..."
                     multiline
                     rows={3}
                   />
@@ -2106,7 +2107,7 @@ export default function TemplateEditorPage() {
                       );
                     }}
                   >
-                    Salvează
+                    Save
                   </s-button>
                   <s-button
                     type="button"
@@ -2116,7 +2117,7 @@ export default function TemplateEditorPage() {
                       setMetafieldEditData({ customName: "", tooltipEnabled: false, tooltipText: "" });
                     }}
                   >
-                    Anulează
+                    Cancel
                   </s-button>
                 </s-stack>
               </s-stack>
