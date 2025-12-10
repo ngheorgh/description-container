@@ -13,6 +13,8 @@ primary_region = 'fra'
 
 [env]
   PORT = '3000'
+  HOST = '0.0.0.0'
+  NODE_ENV = 'production'
   SCOPES = 'read_collection_listings,read_products,write_products'
   SHOPIFY_API_KEY = 'ca91204f3bbed9d75fb64d69bea21264'
   SHOPIFY_APP_URL = 'https://description-container-v1.fly.dev'
