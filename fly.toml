@@ -12,6 +12,7 @@ primary_region = 'fra'
   release_command = 'npx prisma migrate deploy'
 
 [env]
+  NODE_ENV = 'production'
   PORT = '3000'
   SCOPES = 'read_collection_listings,read_products,write_products'
   SHOPIFY_API_KEY = 'ca91204f3bbed9d75fb64d69bea21264'

@@ -6,25 +6,68 @@
  */
 
 import { createServer } from "node:http";
-import { createRequestHandler } from "react-router";
+import { installGlobals } from "@react-router/node";
+
+// Instalează globals pentru Node.js (Request, Response, etc.)
+installGlobals();
 
 // Importă server-ul React Router
 const build = await import("./build/server/index.js");
 
-// Creează request handler
-const requestHandler = createRequestHandler({
-  build,
-  mode: process.env.NODE_ENV || "production",
-});
+// React Router v7 exportă handler-ul ca default sau ca requestHandler
+const requestHandler = build.default || build.requestHandler || build;
 
 // Obține port și host din environment
 // IMPORTANT: Pentru Fly.io, trebuie să ascultăm pe 0.0.0.0, nu pe 127.0.0.1
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 3000;
 const host = "0.0.0.0"; // Forțează 0.0.0.0 pentru Fly.io
 
 // Creează server HTTP
-const server = createServer((req, res) => {
-  return requestHandler(req, res);
+const server = createServer(async (req, res) => {
+  try {
+    // Convertește Node.js request la Web API Request
+    const protocol = req.headers["x-forwarded-proto"] || "http";
+    const hostname = req.headers.host || `${host}:${port}`;
+    const url = `${protocol}://${hostname}${req.url}`;
+    
+    // Creează Request object
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (value) {
+        headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+      }
+    }
+
+    const request = new Request(url, {
+      method: req.method,
+      headers: headers,
+      body: req.method !== "GET" && req.method !== "HEAD" ? req : undefined,
+    });
+
+    // Apelează handler-ul React Router
+    const response = await requestHandler(request, {
+      context: {},
+    });
+
+    // Trimite răspunsul
+    res.writeHead(response.status, Object.fromEntries(response.headers));
+    
+    if (response.body) {
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(Buffer.from(value));
+      }
+    }
+    res.end();
+  } catch (error) {
+    console.error("❌ Request error:", error);
+    if (!res.headersSent) {
+      res.writeHead(500, { "Content-Type": "text/plain" });
+    }
+    res.end("Internal Server Error");
+  }
 });
 
 // Pornește serverul pe 0.0.0.0:port
