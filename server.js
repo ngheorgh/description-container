@@ -22,8 +22,9 @@ const requestHandler = createRequestHandler({
 });
 
 // Obține port și host din environment
+// IMPORTANT: Pentru Fly.io, trebuie să ascultăm pe 0.0.0.0, nu pe 127.0.0.1
 const port = process.env.PORT || 3000;
-const host = process.env.HOST || "0.0.0.0";
+const host = "0.0.0.0"; // Forțează 0.0.0.0 pentru Fly.io
 
 // Creează server HTTP
 const server = createServer((req, res) => {
