@@ -6,7 +6,7 @@
  */
 
 import { createServer } from "node:http";
-import { createRequestHandler } from "@react-router/node";
+import { createRequestHandler } from "react-router";;
 import { installGlobals } from "@react-router/node";
 
 // Instalează globals pentru Node.js
