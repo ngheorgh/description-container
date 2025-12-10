@@ -6,15 +6,12 @@
  */
 
 import { createServer } from "node:http";
-import { installGlobals } from "@react-router/node";
-
-// Instalează globals pentru Node.js (Request, Response, etc.)
-installGlobals();
 
 // Importă server-ul React Router
 const build = await import("./build/server/index.js");
 
 // React Router v7 exportă handler-ul ca default sau ca requestHandler
+// În Node.js v20+, Request și Response sunt deja disponibile global
 const requestHandler = build.default || build.requestHandler || build;
 
 // Obține port și host din environment
