@@ -54,16 +54,33 @@ export async function loader({ request }) {
     // Formatează secțiunile pentru a fi ușor de folosit în Liquid
     const sections = template.sections.map(section => ({
       heading: section.heading,
-      metafields: section.metafields.map(mf => ({
-        namespace: mf.metafieldDefinition.namespace,
-        key: mf.metafieldDefinition.key,
-        ownerType: mf.metafieldDefinition.ownerType,
-        name: mf.metafieldDefinition.name || null,
-        type: mf.metafieldDefinition.type,
-        customName: mf.customName || null,
-        tooltipEnabled: mf.tooltipEnabled || false,
-        tooltipText: mf.tooltipText || null,
-      })),
+      metafields: section.metafields.map(mf => {
+        // Debug logging pentru hideFromPC/hideFromMobile
+        if (process.env.NODE_ENV === "development") {
+          console.log("📦 [API] Metafield hide flags:", {
+            namespace: mf.metafieldDefinition.namespace,
+            key: mf.metafieldDefinition.key,
+            hideFromPC: mf.hideFromPC,
+            hideFromMobile: mf.hideFromMobile,
+            hideFromPCType: typeof mf.hideFromPC,
+            hideFromMobileType: typeof mf.hideFromMobile
+          });
+        }
+        
+        return {
+          namespace: mf.metafieldDefinition.namespace,
+          key: mf.metafieldDefinition.key,
+          ownerType: mf.metafieldDefinition.ownerType,
+          name: mf.metafieldDefinition.name || null,
+          type: mf.metafieldDefinition.type,
+          customName: mf.customName || null,
+          tooltipEnabled: mf.tooltipEnabled === true,
+          tooltipText: mf.tooltipText || null,
+          // Asigură-te că valorile sunt boolean, nu string sau undefined
+          hideFromPC: mf.hideFromPC === true,
+          hideFromMobile: mf.hideFromMobile === true,
+        };
+      }),
     }));
 
     // Obține toate metafield definitions din baza de date pentru a construi codul Liquid

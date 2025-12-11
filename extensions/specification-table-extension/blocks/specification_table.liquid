@@ -559,6 +559,19 @@
     // Citește setările din container
     const firstColumnWidth = container.dataset.firstColumnWidth || '40';
     
+    // Debug: verifică dacă template-ul conține flag-urile hideFromPC/hideFromMobile
+    console.log('renderTemplate - Template sections:', template.sections?.map(s => ({
+      heading: s.heading,
+      metafields: s.metafields?.map(mf => ({
+        namespace: mf.namespace,
+        key: mf.key,
+        hideFromPC: mf.hideFromPC,
+        hideFromMobile: mf.hideFromMobile,
+        hideFromPCType: typeof mf.hideFromPC,
+        hideFromMobileType: typeof mf.hideFromMobile
+      }))
+    })));
+    
     // Construiește CSS variables pentru stilurile dinamice
     let cssVars = '--dc-bg-color: ' + (styling.backgroundColor || '#ffffff') + '; ';
     cssVars += '--dc-text-color: ' + (styling.textColor || '#000000') + '; ';
@@ -590,8 +603,18 @@
     template.sections.forEach((section, sectionIndex) => {
       if (section.metafields && section.metafields.length > 0) {
         section.metafields.forEach((metafield, mfIndex) => {
+          // Asigură-te că toate proprietățile sunt copiate, inclusiv hideFromPC și hideFromMobile
           allMetafieldsWithSection.push({
-            ...metafield,
+            namespace: metafield.namespace,
+            key: metafield.key,
+            ownerType: metafield.ownerType,
+            name: metafield.name,
+            type: metafield.type,
+            customName: metafield.customName,
+            tooltipEnabled: metafield.tooltipEnabled,
+            tooltipText: metafield.tooltipText,
+            hideFromPC: metafield.hideFromPC !== undefined ? metafield.hideFromPC : false,
+            hideFromMobile: metafield.hideFromMobile !== undefined ? metafield.hideFromMobile : false,
             sectionIndex: sectionIndex,
             sectionHeading: section.heading,
             mfIndex: mfIndex
@@ -712,7 +735,33 @@
         rowStyle = 'background-color: ' + styling.tdBackgroundColor + '; ';
       }
       
-      html += '<tr class="dc_table_tr"' + (rowStyle ? ' style="' + rowStyle + '"' : '') + '>';
+      // Adaugă clasele pentru hide from PC/Mobile
+      // Verifică dacă valorile sunt true (boolean sau string "true")
+      const hideFromPC = metafield.hideFromPC === true || metafield.hideFromPC === 'true';
+      const hideFromMobile = metafield.hideFromMobile === true || metafield.hideFromMobile === 'true';
+      
+      let rowClasses = 'dc_table_tr';
+      if (hideFromPC) {
+        rowClasses += ' dc_hide_from_pc';
+      }
+      if (hideFromMobile) {
+        rowClasses += ' dc_hide_from_mobile';
+      }
+      
+      // Debug logging (doar în development)
+      if (hideFromPC || hideFromMobile) {
+        console.log('Metafield hide flags:', {
+          namespace: metafield.namespace,
+          key: metafield.key,
+          hideFromPC: metafield.hideFromPC,
+          hideFromMobile: metafield.hideFromMobile,
+          hideFromPCBool: hideFromPC,
+          hideFromMobileBool: hideFromMobile,
+          rowClasses: rowClasses
+        });
+      }
+      
+      html += '<tr class="' + rowClasses + '"' + (rowStyle ? ' style="' + rowStyle + '"' : '') + '>';
       html += '<td class="dc_table_td_label">';
       // Folosește customName dacă există, altfel name sau namespace.key
       const displayName = metafield.customName || metafield.name || metafield.namespace + '.' + metafield.key;

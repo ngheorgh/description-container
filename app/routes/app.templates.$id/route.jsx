@@ -224,12 +224,18 @@ export const action = async ({ request, params }) => {
         const tooltipEnabled = tooltipEnabledRaw === "true";
         const tooltipTextRaw = formData.get(`section_${i}_metafield_${j}_tooltipText`);
         const tooltipText = tooltipTextRaw && tooltipTextRaw.trim() !== "" ? tooltipTextRaw.trim() : null;
+        const hideFromPCRaw = formData.get(`section_${i}_metafield_${j}_hideFromPC`);
+        const hideFromPC = hideFromPCRaw === "true";
+        const hideFromMobileRaw = formData.get(`section_${i}_metafield_${j}_hideFromMobile`);
+        const hideFromMobile = hideFromMobileRaw === "true";
         
         console.log(`Metafield ${j} in section ${i}:`, {
           metafieldId,
           customName,
           tooltipEnabled,
           tooltipText,
+          hideFromPC,
+          hideFromMobile,
         });
         
         metafields.push({
@@ -237,6 +243,8 @@ export const action = async ({ request, params }) => {
           customName,
           tooltipEnabled,
           tooltipText,
+          hideFromPC,
+          hideFromMobile,
         });
       }
     }
@@ -319,6 +327,8 @@ export default function TemplateEditorPage() {
           customName: mf.customName !== undefined && mf.customName !== null ? mf.customName : null,
           tooltipEnabled: mf.tooltipEnabled === true,
           tooltipText: mf.tooltipText !== undefined && mf.tooltipText !== null ? mf.tooltipText : null,
+          hideFromPC: mf.hideFromPC === true,
+          hideFromMobile: mf.hideFromMobile === true,
         };
       })
     }));
@@ -343,7 +353,13 @@ export default function TemplateEditorPage() {
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [templateName, setTemplateName] = useState(template?.name || "");
   const [editingMetafield, setEditingMetafield] = useState(null); // { sectionIndex, metafieldIndex }
-  const [metafieldEditData, setMetafieldEditData] = useState({ customName: "", tooltipEnabled: false, tooltipText: "" });
+  const [metafieldEditData, setMetafieldEditData] = useState({ 
+    customName: "", 
+    tooltipEnabled: false, 
+    tooltipText: "",
+    hideFromPC: false,
+    hideFromMobile: false
+  });
   const [formKey, setFormKey] = useState(0); // Counter pentru a forța re-renderizarea formularului
 
   // Debug: log sections când se schimbă
@@ -358,6 +374,8 @@ export default function TemplateEditorPage() {
         const customNameInput = document.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_customName"]`);
         const tooltipEnabledInput = document.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_tooltipEnabled"]`);
         const tooltipTextInput = document.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_tooltipText"]`);
+        const hideFromPCInput = document.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_hideFromPC"]`);
+        const hideFromMobileInput = document.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_hideFromMobile"]`);
         
         if (customNameInput) {
           customNameInput.value = metafield.customName || "";
@@ -367,6 +385,12 @@ export default function TemplateEditorPage() {
         }
         if (tooltipTextInput) {
           tooltipTextInput.value = metafield.tooltipText || "";
+        }
+        if (hideFromPCInput) {
+          hideFromPCInput.value = metafield.hideFromPC ? "true" : "false";
+        }
+        if (hideFromMobileInput) {
+          hideFromMobileInput.value = metafield.hideFromMobile ? "true" : "false";
         }
       });
     });
@@ -597,6 +621,8 @@ export default function TemplateEditorPage() {
         customName: null,
         tooltipEnabled: false,
         tooltipText: null,
+        hideFromPC: false,
+        hideFromMobile: false,
       });
       // Șterge selecția după adăugare
       delete selectedMetafieldsForSection[`${sectionIndex}_${id}`];
@@ -632,17 +658,32 @@ export default function TemplateEditorPage() {
       tooltipText,
     });
     
+    // Logica mutually exclusive: dacă unul este true, celălalt devine false
+    let hideFromPC = data.hideFromPC || false;
+    let hideFromMobile = data.hideFromMobile || false;
+    
+    if (hideFromPC && hideFromMobile) {
+      // Dacă ambele sunt true, păstrează doar cel care a fost setat ultimul
+      // Verifică care a fost setat în data
+      if (data.hideFromPC === true && data.hideFromMobile === true) {
+        // Dacă ambele sunt setate simultan, prioritate pentru hideFromPC
+        hideFromMobile = false;
+      }
+    }
+    
     newSections[sectionIndex].metafields[metafieldIndex] = {
       ...newSections[sectionIndex].metafields[metafieldIndex],
       customName,
       tooltipEnabled: data.tooltipEnabled || false,
       tooltipText,
+      hideFromPC,
+      hideFromMobile,
     };
     setSections(newSections);
     // Incrementează formKey pentru a forța re-renderizarea formularului și hidden inputs-urilor
     setFormKey(prev => prev + 1);
     setEditingMetafield(null);
-    setMetafieldEditData({ customName: "", tooltipEnabled: false, tooltipText: "" });
+    setMetafieldEditData({ customName: "", tooltipEnabled: false, tooltipText: "", hideFromPC: false, hideFromMobile: false });
   };
 
   const getAvailableMetafields = (sectionIndex) => {
@@ -1053,6 +1094,8 @@ export default function TemplateEditorPage() {
                   const customNameInput = e.currentTarget.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_customName"]`);
                   const tooltipEnabledInput = e.currentTarget.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_tooltipEnabled"]`);
                   const tooltipTextInput = e.currentTarget.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_tooltipText"]`);
+                  const hideFromPCInput = e.currentTarget.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_hideFromPC"]`);
+                  const hideFromMobileInput = e.currentTarget.querySelector(`input[name="section_${sectionIndex}_metafield_${mfIndex}_hideFromMobile"]`);
                   
                   if (customNameInput) {
                     customNameInput.value = metafield.customName || "";
@@ -1062,6 +1105,12 @@ export default function TemplateEditorPage() {
                   }
                   if (tooltipTextInput) {
                     tooltipTextInput.value = metafield.tooltipText || "";
+                  }
+                  if (hideFromPCInput) {
+                    hideFromPCInput.value = metafield.hideFromPC ? "true" : "false";
+                  }
+                  if (hideFromMobileInput) {
+                    hideFromMobileInput.value = metafield.hideFromMobile ? "true" : "false";
                   }
                 });
               });
@@ -1133,6 +1182,16 @@ export default function TemplateEditorPage() {
                         type="hidden"
                         name={`section_${sectionIndex}_metafield_${mfIndex}_tooltipText`}
                         value={mf.tooltipText || ""}
+                        />
+                        <input
+                        type="hidden"
+                        name={`section_${sectionIndex}_metafield_${mfIndex}_hideFromPC`}
+                        value={mf.hideFromPC ? "true" : "false"}
+                        />
+                        <input
+                        type="hidden"
+                        name={`section_${sectionIndex}_metafield_${mfIndex}_hideFromMobile`}
+                        value={mf.hideFromMobile ? "true" : "false"}
                         />
                     </div>
                     ))}
@@ -1295,6 +1354,8 @@ export default function TemplateEditorPage() {
                                             customName: metafield.customName || "",
                                             tooltipEnabled: metafield.tooltipEnabled || false,
                                             tooltipText: metafield.tooltipText || "",
+                                            hideFromPC: metafield.hideFromPC || false,
+                                            hideFromMobile: metafield.hideFromMobile || false,
                                           });
                                         }}
                                       >
@@ -2095,6 +2156,39 @@ export default function TemplateEditorPage() {
                   />
                 )}
 
+                <s-stack direction="block" gap="base" style={{ marginTop: "16px" }}>
+                  <s-text emphasis="strong">Display Options:</s-text>
+                  <s-switch
+                    label="Hide from PC"
+                    checked={metafieldEditData.hideFromPC}
+                    onChange={(e) => {
+                      const newHideFromPC = e.target.checked;
+                      setMetafieldEditData({
+                        ...metafieldEditData,
+                        hideFromPC: newHideFromPC,
+                        // Dacă hideFromPC devine true, hideFromMobile devine false (mutually exclusive)
+                        hideFromMobile: newHideFromPC ? false : metafieldEditData.hideFromMobile,
+                      });
+                    }}
+                  />
+                  <s-switch
+                    label="Hide from Mobile"
+                    checked={metafieldEditData.hideFromMobile}
+                    onChange={(e) => {
+                      const newHideFromMobile = e.target.checked;
+                      setMetafieldEditData({
+                        ...metafieldEditData,
+                        hideFromMobile: newHideFromMobile,
+                        // Dacă hideFromMobile devine true, hideFromPC devine false (mutually exclusive)
+                        hideFromPC: newHideFromMobile ? false : metafieldEditData.hideFromPC,
+                      });
+                    }}
+                  />
+                  <s-text tone="subdued" style={{ fontSize: "12px" }}>
+                    Only one option can be enabled at a time. If both are disabled, the metafield will be displayed on all devices.
+                  </s-text>
+                </s-stack>
+
                 <s-stack direction="inline" gap="tight" style={{ marginTop: "16px" }}>
                   <s-button
                     type="button"
@@ -2114,7 +2208,7 @@ export default function TemplateEditorPage() {
                     variant="tertiary"
                     onClick={() => {
                       setEditingMetafield(null);
-                      setMetafieldEditData({ customName: "", tooltipEnabled: false, tooltipText: "" });
+                      setMetafieldEditData({ customName: "", tooltipEnabled: false, tooltipText: "", hideFromPC: false, hideFromMobile: false });
                     }}
                   >
                     Cancel

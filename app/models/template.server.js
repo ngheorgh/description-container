@@ -50,6 +50,8 @@ export async function getTemplates(shopDomain) {
               customName: true,
               tooltipEnabled: true,
               tooltipText: true,
+              hideFromPC: true,
+              hideFromMobile: true,
               metafieldDefinition: {
                 select: {
                   id: true,
@@ -177,6 +179,8 @@ export async function createTemplate(data, shopDomain) {
                 customName,
                 tooltipEnabled: metafield.tooltipEnabled || false,
                 tooltipText,
+                hideFromPC: metafield.hideFromPC || false,
+                hideFromMobile: metafield.hideFromMobile || false,
               };
             }) || [],
           },
@@ -267,6 +271,8 @@ export async function updateTemplate(templateId, data, shopDomain) {
                 customName,
                 tooltipEnabled: metafield.tooltipEnabled || false,
                 tooltipText,
+                hideFromPC: metafield.hideFromPC || false,
+                hideFromMobile: metafield.hideFromMobile || false,
               };
             }) || [],
           },
@@ -611,6 +617,8 @@ async function getTemplateWithRelations(templateId) {
               customName: true,
               tooltipEnabled: true,
               tooltipText: true,
+              hideFromPC: true,
+              hideFromMobile: true,
               metafieldDefinition: {
                 select: {
                   id: true,
@@ -820,6 +828,8 @@ export async function getTemplateForTarget(shopDomain, productId = null, collect
       customName: true,
       tooltipEnabled: true,
       tooltipText: true,
+      hideFromPC: true,
+      hideFromMobile: true,
       metafieldDefinition: {
         select: {
           id: true,

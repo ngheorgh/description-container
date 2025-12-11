@@ -145,3 +145,25 @@
   /* Container pentru tabel */
 }
 
+/* Hide from PC - ascunde pe desktop (screen width >= 768px) */
+.dc_hide_from_pc {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .dc_hide_from_pc {
+    display: table-row; /* Pe mobile, afișează normal */
+  }
+}
+
+/* Hide from Mobile - ascunde pe mobile (screen width < 768px) */
+.dc_hide_from_mobile {
+  display: table-row; /* Pe desktop, afișează normal */
+}
+
+@media (max-width: 767px) {
+  .dc_hide_from_mobile {
+    display: none; /* Pe mobile, ascunde */
+  }
+}
+
