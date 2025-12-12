@@ -394,6 +394,57 @@ export default function TemplateEditorPage() {
     hideFromMobile: false
   });
   const [formKey, setFormKey] = useState(0); // Counter pentru a forța re-renderizarea formularului
+  const isInitialMount = useRef(true); // Flag pentru a detecta prima încărcare
+
+  // Salvează state-ul inițial pentru detectarea schimbărilor
+  const initialFormState = useRef({
+    templateName: template?.name || "",
+    sections: template?.sections ? template.sections.map(section => ({
+      heading: section.heading,
+      metafields: (section.metafields || []).map(mf => ({
+        metafieldDefinitionId: mf.metafieldDefinitionId,
+        customName: mf.customName !== undefined && mf.customName !== null ? mf.customName : null,
+        tooltipEnabled: mf.tooltipEnabled === true,
+        tooltipText: mf.tooltipText !== undefined && mf.tooltipText !== null ? mf.tooltipText : null,
+        hideFromPC: mf.hideFromPC === true,
+        hideFromMobile: mf.hideFromMobile === true,
+      }))
+    })) : [{ heading: "", metafields: [] }],
+    isActive: template?.isActive !== undefined ? template.isActive : true,
+    isAccordion: template?.isAccordion || false,
+    isAccordionHideFromPC: template?.isAccordionHideFromPC || false,
+    isAccordionHideFromMobile: template?.isAccordionHideFromMobile || false,
+    seeMoreEnabled: template?.seeMoreEnabled || false,
+    seeMoreHideFromPC: template?.seeMoreHideFromPC || false,
+    seeMoreHideFromMobile: template?.seeMoreHideFromMobile || false,
+    styling: template?.styling ? JSON.parse(template.styling) : {
+      backgroundColor: "#ffffff",
+      textColor: "#000000",
+      headingColor: "#000000",
+      headingFontSize: "16px",
+      headingFontWeight: "bold",
+      headingFontFamily: "Arial",
+      textFontSize: "14px",
+      textFontFamily: "Arial",
+      borderWidth: "1px",
+      borderRadius: "0px",
+      padding: "10px",
+      sectionBorderEnabled: false,
+      sectionBorderWidth: "1px",
+      sectionBorderColor: "#000000",
+      sectionBorderStyle: "solid",
+      rowBorderEnabled: false,
+      rowBorderColor: "#000000",
+      rowBorderStyle: "solid",
+      rowBorderWidth: "1px",
+      tdBackgroundColor: "#ffffff",
+      rowBackgroundEnabled: false,
+      oddRowBackgroundColor: "#f5f5f5",
+      evenRowBackgroundColor: "#ffffff",
+      textTransform: "none",
+    }
+  });
+
 
   // Debug: log sections când se schimbă
   useEffect(() => {
@@ -507,6 +558,32 @@ export default function TemplateEditorPage() {
   useEffect(() => {
     if (actionData?.success) {
       setShowSuccessBanner(true);
+      
+      // Afișează notificare toast de succes
+      shopify.toast.show(
+        `Template ${isNew ? "created" : "updated"} successfully!`
+      );
+      
+      // Actualizează state-ul inițial după salvare cu succes
+      // pentru a reseta detectarea schimbărilor nesalvate
+      initialFormState.current = {
+        templateName,
+        sections: JSON.parse(JSON.stringify(sections)),
+        isActive,
+        isAccordion,
+        isAccordionHideFromPC,
+        isAccordionHideFromMobile,
+        seeMoreEnabled,
+        seeMoreHideFromPC,
+        seeMoreHideFromMobile,
+        styling: JSON.parse(JSON.stringify(styling))
+      };
+      
+      // Resetează flag-ul pentru a preveni declanșarea evenimentelor change imediat după salvare
+      isInitialMount.current = true;
+      
+      // Save Bar se va ascunde automat după submit cu succes
+      
       // Dacă există redirect, navighează după 1.5 secunde pentru a permite utilizatorului să vadă banner-ul
       if (actionData?.redirect) {
         const timer = setTimeout(() => {
@@ -520,9 +597,224 @@ export default function TemplateEditorPage() {
         }, 5000);
         return () => clearTimeout(timer);
       }
+    } else if (actionData?.success === false && actionData?.error) {
+      // Dacă există eroare, afișează-o automat
+      shopify.toast.show(`Eroare: ${actionData.error}`, { isError: true });
     }
-    // Dacă există eroare, afișează-o automat (banner-ul va fi afișat)
-  }, [actionData, navigate]);
+  }, [actionData, navigate, shopify, templateName, sections, isActive, isAccordion, 
+      isAccordionHideFromPC, isAccordionHideFromMobile, seeMoreEnabled, 
+      seeMoreHideFromPC, seeMoreHideFromMobile, styling, isNew]);
+
+  // Funcție pentru a detecta dacă există schimbări nesalvate
+  const hasUnsavedChanges = useCallback(() => {
+    // Compară templateName
+    if (templateName !== initialFormState.current.templateName) {
+      return true;
+    }
+
+    // Compară isActive
+    if (isActive !== initialFormState.current.isActive) {
+      return true;
+    }
+
+    // Compară isAccordion și setările asociate
+    if (isAccordion !== initialFormState.current.isAccordion ||
+        isAccordionHideFromPC !== initialFormState.current.isAccordionHideFromPC ||
+        isAccordionHideFromMobile !== initialFormState.current.isAccordionHideFromMobile) {
+      return true;
+    }
+
+    // Compară seeMoreEnabled și setările asociate
+    if (seeMoreEnabled !== initialFormState.current.seeMoreEnabled ||
+        seeMoreHideFromPC !== initialFormState.current.seeMoreHideFromPC ||
+        seeMoreHideFromMobile !== initialFormState.current.seeMoreHideFromMobile) {
+      return true;
+    }
+
+    // Compară sections
+    if (sections.length !== initialFormState.current.sections.length) {
+      return true;
+    }
+
+    for (let i = 0; i < sections.length; i++) {
+      const currentSection = sections[i];
+      const initialSection = initialFormState.current.sections[i];
+
+      if (!initialSection) return true;
+
+      if (currentSection.heading !== initialSection.heading) {
+        return true;
+      }
+
+      if (currentSection.metafields.length !== initialSection.metafields.length) {
+        return true;
+      }
+
+      for (let j = 0; j < currentSection.metafields.length; j++) {
+        const currentMf = currentSection.metafields[j];
+        const initialMf = initialSection.metafields[j];
+
+        if (!initialMf) return true;
+
+        if (currentMf.metafieldDefinitionId !== initialMf.metafieldDefinitionId ||
+            currentMf.customName !== initialMf.customName ||
+            currentMf.tooltipEnabled !== initialMf.tooltipEnabled ||
+            currentMf.tooltipText !== initialMf.tooltipText ||
+            currentMf.hideFromPC !== initialMf.hideFromPC ||
+            currentMf.hideFromMobile !== initialMf.hideFromMobile) {
+          return true;
+        }
+      }
+    }
+
+    // Compară styling
+    const currentStyling = JSON.stringify(styling);
+    const initialStyling = JSON.stringify(initialFormState.current.styling);
+    if (currentStyling !== initialStyling) {
+      return true;
+    }
+
+    return false;
+  }, [templateName, isActive, isAccordion, isAccordionHideFromPC, isAccordionHideFromMobile, 
+      seeMoreEnabled, seeMoreHideFromPC, seeMoreHideFromMobile, sections, styling]);
+
+
+  // Funcție pentru a declanșa evenimente change pe hidden inputs
+  // Acest lucru este necesar pentru ca Save Bar să detecteze schimbările
+  const triggerFormChanges = useCallback(() => {
+    const form = document.querySelector('form[data-save-bar]');
+    if (!form) return;
+
+    // Declanșează change pe input-ul pentru templateName
+    const nameInput = form.querySelector('input[name="name"]');
+    if (nameInput) {
+      nameInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    // Declanșează change pe toate hidden inputs pentru sections
+    sections.forEach((section, sectionIndex) => {
+      const headingInput = form.querySelector(`input[name="section_${sectionIndex}_heading"]`);
+      if (headingInput) {
+        headingInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      section.metafields?.forEach((metafield, mfIndex) => {
+        const inputs = [
+          `input[name="section_${sectionIndex}_metafield_${mfIndex}_customName"]`,
+          `input[name="section_${sectionIndex}_metafield_${mfIndex}_tooltipEnabled"]`,
+          `input[name="section_${sectionIndex}_metafield_${mfIndex}_tooltipText"]`,
+          `input[name="section_${sectionIndex}_metafield_${mfIndex}_hideFromPC"]`,
+          `input[name="section_${sectionIndex}_metafield_${mfIndex}_hideFromMobile"]`,
+        ];
+
+        inputs.forEach(selector => {
+          const input = form.querySelector(selector);
+          if (input) {
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+      });
+    });
+
+    // Declanșează change pe toate celelalte hidden inputs
+    const otherInputs = [
+      'input[name="isActive"]',
+      'input[name="isAccordion"]',
+      'input[name="isAccordionHideFromPC"]',
+      'input[name="isAccordionHideFromMobile"]',
+      'input[name="seeMoreEnabled"]',
+      'input[name="seeMoreHideFromPC"]',
+      'input[name="seeMoreHideFromMobile"]',
+    ];
+
+    otherInputs.forEach(selector => {
+      const input = form.querySelector(selector);
+      if (input) {
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+  }, [sections]);
+
+  // Ascunde Save Bar explicit la prima încărcare și resetează flag-ul
+  useEffect(() => {
+    if (isInitialMount.current) {
+      // Ascunde explicit Save Bar la prima încărcare dacă apare
+      const hideSaveBar = () => {
+        const form = document.querySelector('form[data-save-bar]');
+        if (form && typeof shopify?.saveBar?.hide === 'function') {
+          shopify.saveBar.hide('save-bar').catch(() => {
+            // Ignoră erorile dacă Save Bar nu este încă inițializat
+          });
+        }
+      };
+      
+      // Încearcă să ascundă imediat
+      hideSaveBar();
+      
+      // Încearcă din nou după un mic delay pentru a fi sigur
+      const timeoutId = setTimeout(() => {
+        hideSaveBar();
+        isInitialMount.current = false;
+      }, 500);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [shopify]);
+
+  // Monitorizează schimbările și declanșează evenimente change pentru Save Bar
+  // DOAR după prima încărcare (nu la mount inițial)
+  useEffect(() => {
+    // La prima încărcare, nu declanșăm evenimente change
+    if (isInitialMount.current) {
+      return;
+    }
+
+    // Așteaptă puțin pentru ca DOM-ul să fie actualizat și formularul să fie disponibil
+    const timeoutId = setTimeout(() => {
+      const form = document.querySelector('form[data-save-bar]');
+      if (form) {
+        triggerFormChanges();
+      }
+    }, 150);
+
+    return () => clearTimeout(timeoutId);
+  }, [templateName, sections, isActive, isAccordion, 
+      isAccordionHideFromPC, isAccordionHideFromMobile, seeMoreEnabled, 
+      seeMoreHideFromPC, seeMoreHideFromMobile, triggerFormChanges, shopify]);
+
+  // Previne navigarea când există schimbări nesalvate
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // Verifică dacă există schimbări nesalvate
+      if (hasUnsavedChanges()) {
+        // Previne închiderea paginii
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    // Adaugă event listener pentru beforeunload
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
+
+  // Interceptează navigarea programatică
+  const handleNavigate = useCallback((path) => {
+    // Verifică dacă există schimbări nesalvate
+    if (hasUnsavedChanges()) {
+      // Afișează confirmare
+      if (confirm('Ai modificări nesalvate. Ești sigur că vrei să părăsești pagina?')) {
+        navigate(path);
+      }
+    } else {
+      // Dacă nu există schimbări, navighează direct
+      navigate(path);
+    }
+  }, [hasUnsavedChanges, navigate]);
 
 
 
@@ -1117,7 +1409,7 @@ export default function TemplateEditorPage() {
           <s-button
             type="button"
             variant="tertiary"
-            onClick={() => navigate("/app/templates")}
+            onClick={() => handleNavigate("/app/templates")}
           >
             Anulează
           </s-button>
@@ -1125,6 +1417,8 @@ export default function TemplateEditorPage() {
             method="post" 
             style={{ display: "inline" }}
             key={`form-${formKey}`}
+            data-save-bar
+            data-discard-confirmation
             onSubmit={(e) => {
               // Validare în frontend
               if (!templateName || templateName.trim() === "") {
@@ -1192,6 +1486,31 @@ export default function TemplateEditorPage() {
               if (isAccordionHideFromMobileInput) {
                 isAccordionHideFromMobileInput.value = isAccordionHideFromMobile ? "true" : "false";
               }
+
+              // După submit cu succes, actualizează state-ul inițial
+              // Acest lucru se va întâmpla în useEffect când actionData indică succes
+            }}
+            onReset={(e) => {
+              // Resetare la state-ul inițial când utilizatorul apasă "Discard"
+              // Resetează flag-ul ÎNAINTE de a schimba state-urile pentru a preveni declanșarea evenimentelor change
+              isInitialMount.current = true;
+              
+              setTemplateName(initialFormState.current.templateName);
+              setIsActive(initialFormState.current.isActive);
+              setIsAccordion(initialFormState.current.isAccordion);
+              setIsAccordionHideFromPC(initialFormState.current.isAccordionHideFromPC);
+              setIsAccordionHideFromMobile(initialFormState.current.isAccordionHideFromMobile);
+              setSeeMoreEnabled(initialFormState.current.seeMoreEnabled);
+              setSeeMoreHideFromPC(initialFormState.current.seeMoreHideFromPC);
+              setSeeMoreHideFromMobile(initialFormState.current.seeMoreHideFromMobile);
+              setSections(JSON.parse(JSON.stringify(initialFormState.current.sections)));
+              setStyling(JSON.parse(JSON.stringify(initialFormState.current.styling)));
+              setFormKey(prev => prev + 1);
+              
+              // După ce state-urile s-au resetat, resetează flag-ul pentru a permite detectarea modificărilor viitoare
+              setTimeout(() => {
+                isInitialMount.current = false;
+              }, 300);
             }}
           >
             <input type="hidden" name="name" value={templateName} />
@@ -1742,7 +2061,7 @@ export default function TemplateEditorPage() {
                       }, 0);
                     }}
                     value={isAccordionHideFromPC ? "true" : "false"}
-                    label="Show accordion just on mobile"
+                    label="Show as accordion just on mobile"
                   />
                   <s-switch
                     id="accordion-hide-from-mobile-switch"
@@ -1770,7 +2089,7 @@ export default function TemplateEditorPage() {
                       }, 0);
                     }}
                     value={isAccordionHideFromMobile ? "true" : "false"}
-                    label="Show accordion just on PC"
+                    label="Show as accordion just on PC"
                   />
                 </s-stack>
               </s-box>

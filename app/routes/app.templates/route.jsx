@@ -592,7 +592,7 @@ export default function TemplatesPage() {
   }, [fetcher.data, shopify]);
 
   const handleDelete = (templateId) => {
-    if (confirm("Ești sigur că vrei să ștergi acest template?")) {
+    if (confirm("You are about to delete this template. Are you sure you want to continue?")) {
       fetcher.submit(
         { templateId, action: "delete" },
         { method: "POST" }
