@@ -1283,6 +1283,12 @@ export default function TemplateEditorPage() {
                               <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: "600", fontSize: "14px", color: "#202223" }}>
                                 Spec Definition
                               </th>
+                              <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: "600", fontSize: "14px", color: "#202223", width: "100px" }}>
+                                Hide from PC
+                              </th>
+                              <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: "600", fontSize: "14px", color: "#202223", width: "100px" }}>
+                                Hide from Mobile
+                              </th>
                               <th style={{ padding: "12px 16px", textAlign: "right", fontWeight: "600", fontSize: "14px", color: "#202223", width: "120px" }}>
                                 Actions
                               </th>
@@ -1339,6 +1345,48 @@ export default function TemplateEditorPage() {
                                         ? `${mfDef.namespace}.${mfDef.key} (${mfDef.ownerType})`
                                         : "N/A"}
                                     </s-text>
+                                  </td>
+                                  <td style={{ padding: "12px 16px", verticalAlign: "middle", textAlign: "center" }}>
+                                    {metafield.hideFromPC ? (
+                                      <span style={{ 
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        width: "24px",
+                                        height: "24px",
+                                        borderRadius: "50%",
+                                        backgroundColor: "#008060",
+                                        color: "#ffffff",
+                                        fontSize: "14px",
+                                        fontWeight: "bold",
+                                        lineHeight: "1"
+                                      }}>
+                                        ✓
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: "#6d7175", fontSize: "12px" }}>—</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: "12px 16px", verticalAlign: "middle", textAlign: "center" }}>
+                                    {metafield.hideFromMobile ? (
+                                      <span style={{ 
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        width: "24px",
+                                        height: "24px",
+                                        borderRadius: "50%",
+                                        backgroundColor: "#008060",
+                                        color: "#ffffff",
+                                        fontSize: "14px",
+                                        fontWeight: "bold",
+                                        lineHeight: "1"
+                                      }}>
+                                        ✓
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: "#6d7175", fontSize: "12px" }}>—</span>
+                                    )}
                                   </td>
                                   <td style={{ padding: "12px 16px", verticalAlign: "middle", textAlign: "right" }}>
                                     <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
