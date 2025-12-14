@@ -155,6 +155,126 @@ export async function syncCollections(admin, shopDomain) {
 }
 
 /**
+ * Sincronizează un singur produs (folosit în webhook-uri)
+ */
+export async function syncSingleProduct(admin, shopDomain, productId) {
+  const query = `
+    query getProduct($id: ID!) {
+      product(id: $id) {
+        id
+        title
+        handle
+      }
+    }
+  `;
+
+  const response = await admin.graphql(query, { variables: { id: productId } });
+  const data = await response.json();
+
+  if (data.errors) {
+    throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+  }
+
+  const product = data.data.product;
+  if (!product) {
+    throw new Error(`Product ${productId} not found`);
+  }
+
+  // Găsește sau creează shop-ul
+  let shop = await prisma.shop.findUnique({
+    where: { shopDomain },
+  });
+
+  if (!shop) {
+    shop = await prisma.shop.create({
+      data: { shopDomain },
+    });
+  }
+
+  // Upsert product
+  await prisma.product.upsert({
+    where: {
+      shopifyId_shopId: {
+        shopifyId: product.id,
+        shopId: shop.id,
+      },
+    },
+    update: {
+      title: product.title,
+      handle: product.handle || null,
+    },
+    create: {
+      shopifyId: product.id,
+      title: product.title,
+      handle: product.handle || null,
+      shopId: shop.id,
+    },
+  });
+
+  return { success: true, shopId: shop.id };
+}
+
+/**
+ * Sincronizează o singură colecție (folosit în webhook-uri)
+ */
+export async function syncSingleCollection(admin, shopDomain, collectionId) {
+  const query = `
+    query getCollection($id: ID!) {
+      collection(id: $id) {
+        id
+        title
+        handle
+      }
+    }
+  `;
+
+  const response = await admin.graphql(query, { variables: { id: collectionId } });
+  const data = await response.json();
+
+  if (data.errors) {
+    throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+  }
+
+  const collection = data.data.collection;
+  if (!collection) {
+    throw new Error(`Collection ${collectionId} not found`);
+  }
+
+  // Găsește sau creează shop-ul
+  let shop = await prisma.shop.findUnique({
+    where: { shopDomain },
+  });
+
+  if (!shop) {
+    shop = await prisma.shop.create({
+      data: { shopDomain },
+    });
+  }
+
+  // Upsert collection
+  await prisma.collection.upsert({
+    where: {
+      shopifyId_shopId: {
+        shopifyId: collection.id,
+        shopId: shop.id,
+      },
+    },
+    update: {
+      title: collection.title,
+      handle: collection.handle || null,
+    },
+    create: {
+      shopifyId: collection.id,
+      title: collection.title,
+      handle: collection.handle || null,
+      shopId: shop.id,
+    },
+  });
+
+  return { success: true, shopId: shop.id };
+}
+
+/**
  * Sincronizează toate definițiile metafield-urilor pentru produse și variante
  */
 export async function syncMetafieldDefinitions(admin, shopDomain) {

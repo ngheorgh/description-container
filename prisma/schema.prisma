@@ -44,6 +44,7 @@ model Shop {
   templates           SpecificationTemplate[]
   assignments         TemplateAssignment[]
   templateLookups     TemplateLookup[]
+  webhookEvents       WebhookEvent[]
 }
 
 model Product {
@@ -217,4 +218,27 @@ model TemplateLookup {
   @@index([shopId, collectionId, priority, templateId])
   @@index([shopId, isDefault, priority, templateId])
   @@unique([shopId, productId, collectionId, priority])
+}
+
+/**
+ * Tabel pentru monitorizarea webhook-urilor
+ * Stochează toate evenimentele webhook pentru debugging și monitoring
+ */
+model WebhookEvent {
+  id            String   @id @default(uuid())
+  shopId        String
+  topic         String   // "products/create", "collections/update", etc.
+  status        String   // "success" sau "error"
+  errorMessage  String?  // Mesajul de eroare dacă status = "error"
+  payload       String?  // Payload-ul webhook-ului (JSON string, opțional pentru debugging)
+  responseTime  Int?     // Timpul de răspuns în ms
+  createdAt     DateTime @default(now())
+  
+  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  
+  @@index([shopId])
+  @@index([shopId, topic])
+  @@index([shopId, status])
+  @@index([shopId, createdAt])
+  @@index([topic, status])
 }

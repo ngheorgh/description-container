@@ -1,6 +1,7 @@
 import { authenticate } from "../shopify.server";
-import { syncSingleProduct, syncMetafieldDefinitions } from "../models/sync.server";
+import prisma from "../db.server.js";
 import { logWebhookEvent } from "../models/webhook-logger.server.js";
+import { normalizeShopifyId } from "../models/template-lookup.server.js";
 
 export const action = async ({ request }) => {
   const startTime = performance.now();
@@ -19,21 +20,32 @@ export const action = async ({ request }) => {
   console.log(`Received ${topic} webhook for ${shop}`);
 
   try {
-    // Obține product ID din payload
-    const productId = payload?.admin_graphql_api_id || payload?.id;
+    // Obține collection ID din payload
+    const collectionId = payload?.admin_graphql_api_id || payload?.id;
 
-    if (productId) {
-      // Sincronizează produsul în DB
-      await syncSingleProduct(admin, shop, productId);
-      console.log(`Successfully synced product ${productId} after update`);
+    if (collectionId) {
+      // Șterge colecția din DB
+      const shopRecord = await prisma.shop.findUnique({
+        where: { shopDomain: shop },
+        select: { id: true },
+      });
+
+      if (shopRecord) {
+        const normalizedId = normalizeShopifyId(collectionId);
+        if (normalizedId) {
+          await prisma.collection.deleteMany({
+            where: {
+              shopifyId: normalizedId,
+              shopId: shopRecord.id,
+            },
+          });
+          console.log(`Successfully deleted collection ${collectionId} from DB`);
+        }
+      }
     }
 
-    // Sincronizează metafield definitions
-    await syncMetafieldDefinitions(admin, shop);
-    console.log(`Successfully synced metafield definitions after product update`);
-
     const responseTime = Math.round(performance.now() - startTime);
-    await logWebhookEvent(shop, topic, "success", null, { productId }, responseTime);
+    await logWebhookEvent(shop, topic, "success", null, { collectionId }, responseTime);
   } catch (error) {
     const responseTime = Math.round(performance.now() - startTime);
     const errorMessage = error.message || "Unknown error";
@@ -45,8 +57,4 @@ export const action = async ({ request }) => {
 
   return new Response();
 };
-
-
-
-
 
