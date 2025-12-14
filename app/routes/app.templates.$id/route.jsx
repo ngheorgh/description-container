@@ -1602,14 +1602,6 @@ export default function TemplateEditorPage() {
               onChange={(e) => setTemplateName(e.target.value || e.currentTarget?.value || "")}
               required
             />
-            <s-checkbox
-              name="isActive"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              value={isActive ? "true" : "false"}
-              label = "Template active"	
-            >
-            </s-checkbox>
           </s-stack>
         </s-section>
 

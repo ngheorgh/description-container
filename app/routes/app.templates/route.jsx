@@ -3,7 +3,7 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../../shopify.server";
-import { getTemplates, deleteTemplate, getProducts, getCollections, saveTemplateAssignment, getAllAssignments } from "../../models/template.server.js";
+import { getTemplates, deleteTemplate, getProducts, getCollections, saveTemplateAssignment, getAllAssignments, duplicateTemplate, toggleTemplateActive } from "../../models/template.server.js";
 
 // Helper functions pentru conversie ID-uri
 function shopifyIdToGraphQL(shopifyId, resourceType = 'Product') {
@@ -170,6 +170,24 @@ export const action = async ({ request }) => {
         autoAddedCount: result.autoAddedCount || 0,
         autoAddedType: result.autoAddedType || null
       };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  if (actionType === "duplicate" && templateId) {
+    try {
+      await duplicateTemplate(templateId, session.shop);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  if (actionType === "toggleActive" && templateId) {
+    try {
+      await toggleTemplateActive(templateId, session.shop);
+      return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -979,10 +997,20 @@ export default function TemplatesPage() {
     if (fetcher.data?.success === false) {
       shopify.toast.show(`Error: ${fetcher.data.error}`, { isError: true });
     } else if (fetcher.data?.success) {
-      shopify.toast.show("Template deleted successfully!");
+      const formData = fetcher.formData;
+      const actionType = formData?.get("action");
+      
+      if (actionType === "delete") {
+        shopify.toast.show("Template deleted successfully!");
+      } else if (actionType === "duplicate") {
+        shopify.toast.show("Template duplicated successfully!");
+      } else if (actionType === "toggleActive") {
+        // Nu afișăm toast pentru toggle, se face automat refresh
+      }
+      
       window.location.reload();
     }
-  }, [fetcher.data, shopify]);
+  }, [fetcher.data, fetcher.formData, shopify]);
 
   const handleDelete = (templateId) => {
     if (confirm("You are about to delete this template. Are you sure you want to continue?")) {
@@ -991,6 +1019,20 @@ export default function TemplatesPage() {
         { method: "POST" }
       );
     }
+  };
+
+  const handleDuplicate = (templateId) => {
+    fetcher.submit(
+      { templateId, action: "duplicate" },
+      { method: "POST" }
+    );
+  };
+
+  const handleToggleActive = (templateId) => {
+    fetcher.submit(
+      { templateId, action: "toggleActive" },
+      { method: "POST" }
+    );
   };
 
   const isOnDetailPage = location.pathname.includes("/templates/") && location.pathname !== "/app/templates";
@@ -1064,35 +1106,39 @@ export default function TemplatesPage() {
                           {template.sections.reduce((acc, section) => acc + section.metafields.length, 0) === 1 ? "metafield" : "metafields"}
                         </s-text>
                       </div>
-                      <s-stack direction="inline" gap="tight" style={{ flexWrap: "wrap" }}>
-                        <s-badge
-                          status={template.isActive ? "success" : "critical"}
-                          tone={template.isActive ? "success" : "critical"}
-                        >
-                          {template.isActive ? "✓ Active" : "⚠ Inactive"}
-                        </s-badge>
-                        {template.isAccordion && (
-                          <s-badge tone="info">Accordion</s-badge>
-                        )}
+                      <s-stack direction="block" gap="tight" style={{ alignItems: "flex-end" }}>
+                        <s-stack direction="inline" gap="tight" style={{ alignItems: "center" }}>
+                          <s-text variant="bodyMd" tone="subdued">Active: </s-text>
+                          <s-switch
+                            checked={template.isActive}
+                            onChange={() => handleToggleActive(template.id)}
+                          />
+                        </s-stack>
+                        <s-stack direction="inline" gap="tight" style={{ marginTop: "8px" }}>
+                          <s-button
+                            href={`/app/templates/${template.id}`}
+                            variant="primary"
+                            icon="edit"
+                          >
+                            Edit
+                          </s-button>
+                          <s-button
+                            onClick={() => handleDuplicate(template.id)}
+                            variant="secondary"
+                            icon="duplicate"
+                          >
+                            Duplicate
+                          </s-button>
+                          <s-button
+                            onClick={() => handleDelete(template.id)}
+                            variant="critical"
+                            icon="delete"
+                            tone="critical"
+                          >
+                            Delete
+                          </s-button>
+                        </s-stack>
                       </s-stack>
-                    </s-stack>
-                    
-                    <s-stack direction="inline" gap="tight" style={{ marginTop: "16px" }}>
-                      <s-button
-                        href={`/app/templates/${template.id}`}
-                        variant="primary"
-                        icon="edit"
-                      >
-                        Edit
-                      </s-button>
-                      <s-button
-                        onClick={() => handleDelete(template.id)}
-                        variant="critical"
-                        icon="delete"
-                        tone="critical"
-                      >
-                        Delete
-                      </s-button>
                     </s-stack>
                     
                     <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e1e3e5" }}>

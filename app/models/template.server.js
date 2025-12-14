@@ -206,6 +206,128 @@ export async function createTemplate(data, shopDomain) {
 }
 
 /**
+ * Duplică un template (fără assignments)
+ */
+export async function duplicateTemplate(templateId, shopDomain) {
+  const shop = await prisma.shop.findUnique({
+    where: { shopDomain },
+  });
+
+  if (!shop) {
+    throw new Error("Shop not found");
+  }
+
+  // Obține template-ul original cu toate secțiunile și metafields
+  const originalTemplate = await prisma.specificationTemplate.findFirst({
+    where: {
+      id: templateId,
+      shopId: shop.id,
+    },
+    include: {
+      sections: {
+        include: {
+          metafields: true,
+        },
+        orderBy: {
+          order: "asc",
+        },
+      },
+    },
+  });
+
+  if (!originalTemplate) {
+    throw new Error("Template not found");
+  }
+
+  // Parse styling
+  const styling = originalTemplate.styling ? JSON.parse(originalTemplate.styling) : {};
+
+  // Creează noul template cu numele "original name + duplicate"
+  const newName = `${originalTemplate.name} duplicate`;
+
+  return await prisma.specificationTemplate.create({
+    data: {
+      name: newName,
+      styling: JSON.stringify(styling),
+      isActive: false, // Template-ul duplicat este inactiv by default
+      isAccordion: originalTemplate.isAccordion,
+      isAccordionHideFromPC: originalTemplate.isAccordionHideFromPC,
+      isAccordionHideFromMobile: originalTemplate.isAccordionHideFromMobile,
+      seeMoreEnabled: originalTemplate.seeMoreEnabled,
+      seeMoreHideFromPC: originalTemplate.seeMoreHideFromPC,
+      seeMoreHideFromMobile: originalTemplate.seeMoreHideFromMobile,
+      shopId: shop.id,
+      sections: {
+        create: originalTemplate.sections.map((section, sectionIndex) => ({
+          heading: section.heading,
+          order: sectionIndex,
+          metafields: {
+            create: section.metafields.map((metafield, metafieldIndex) => ({
+              metafieldDefinitionId: metafield.metafieldDefinitionId,
+              order: metafieldIndex,
+              customName: metafield.customName,
+              tooltipEnabled: metafield.tooltipEnabled,
+              tooltipText: metafield.tooltipText,
+              hideFromPC: metafield.hideFromPC,
+              hideFromMobile: metafield.hideFromMobile,
+            })),
+          },
+        })),
+      },
+    },
+    include: {
+      sections: {
+        include: {
+          metafields: {
+            include: {
+              metafieldDefinition: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Toggle isActive pentru un template
+ */
+export async function toggleTemplateActive(templateId, shopDomain) {
+  const shop = await prisma.shop.findUnique({
+    where: { shopDomain },
+  });
+
+  if (!shop) {
+    throw new Error("Shop not found");
+  }
+
+  const template = await prisma.specificationTemplate.findFirst({
+    where: {
+      id: templateId,
+      shopId: shop.id,
+    },
+  });
+
+  if (!template) {
+    throw new Error("Template not found");
+  }
+
+  // Toggle isActive
+  const updated = await prisma.specificationTemplate.update({
+    where: { id: template.id },
+    data: {
+      isActive: !template.isActive,
+    },
+  });
+
+  // Reconstruiește lookup table-ul dacă template-ul a fost activat/dezactivat
+  const { rebuildTemplateLookup } = await import("./template-lookup.server.js");
+  await rebuildTemplateLookup(shop.id);
+
+  return updated;
+}
+
+/**
  * Actualizează un template
  */
 export async function updateTemplate(templateId, data, shopDomain) {
