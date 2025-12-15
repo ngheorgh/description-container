@@ -716,6 +716,30 @@ export default function TemplateEditorPage() {
       'input[name="seeMoreEnabled"]',
       'input[name="seeMoreHideFromPC"]',
       'input[name="seeMoreHideFromMobile"]',
+      // Styling inputs
+      'input[name="backgroundColor"]',
+      'input[name="textColor"]',
+      'input[name="headingColor"]',
+      'input[name="headingFontSize"]',
+      'input[name="headingFontWeight"]',
+      'input[name="headingFontFamily"]',
+      'input[name="textFontSize"]',
+      'input[name="textFontFamily"]',
+      'input[name="borderWidth"]',
+      'input[name="borderRadius"]',
+      'input[name="padding"]',
+      'input[name="sectionBorderEnabled"]',
+      'input[name="sectionBorderColor"]',
+      'input[name="sectionBorderStyle"]',
+      'input[name="rowBorderEnabled"]',
+      'input[name="rowBorderColor"]',
+      'input[name="rowBorderStyle"]',
+      'input[name="rowBorderWidth"]',
+      'input[name="tdBackgroundColor"]',
+      'input[name="rowBackgroundEnabled"]',
+      'input[name="oddRowBackgroundColor"]',
+      'input[name="evenRowBackgroundColor"]',
+      'input[name="textTransform"]',
     ];
 
     otherInputs.forEach(selector => {
@@ -724,7 +748,7 @@ export default function TemplateEditorPage() {
         input.dispatchEvent(new Event('change', { bubbles: true }));
       }
     });
-  }, [sections]);
+  }, [sections, styling]);
 
   // Ascunde Save Bar explicit la prima încărcare și resetează flag-ul
   useEffect(() => {
@@ -771,7 +795,7 @@ export default function TemplateEditorPage() {
     return () => clearTimeout(timeoutId);
   }, [templateName, sections, isActive, isAccordion, 
       isAccordionHideFromPC, isAccordionHideFromMobile, seeMoreEnabled, 
-      seeMoreHideFromPC, seeMoreHideFromMobile, triggerFormChanges, shopify]);
+      seeMoreHideFromPC, seeMoreHideFromMobile, styling, triggerFormChanges, shopify]);
 
   // Previne navigarea când există schimbări nesalvate
   useEffect(() => {
