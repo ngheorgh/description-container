@@ -2,6 +2,7 @@ import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
+import CrispChat from "../components/CrispChat.jsx";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -15,6 +16,7 @@ export default function App() {
 
   return (
     <AppProvider embedded apiKey={apiKey}>
+      <CrispChat />
       <s-app-nav>
         <s-link href="/app">Home</s-link>
         <s-link href="/app/templates">Template-uri</s-link>
