@@ -887,8 +887,57 @@
     html += '<table class="dc_table" id="' + tableId + '">';
     html += '<tbody id="' + tableId + '-tbody">';
     
+    // Obține metafield-urile cu valori din obiectele construite în Liquid
+    const productMetafields = window.productMetafieldsData || {};
+    const variantMetafields = window.variantMetafieldsData || {};
+    
     // Renderizează fiecare metafield din lista de afișat
     displayMetafields.forEach((metafield, index) => {
+      // Verifică dacă metafield-ul are valoare
+      let hasValue = false;
+      let value = null;
+      
+      if (metafield.ownerType === 'PRODUCT') {
+        if (productMetafields[metafield.namespace] && 
+            productMetafields[metafield.namespace][metafield.key] !== undefined) {
+          value = productMetafields[metafield.namespace][metafield.key];
+          // Verifică dacă valoarea nu este goală, null, undefined sau "N/A"
+          hasValue = value !== null && 
+                    value !== undefined && 
+                    value !== '' && 
+                    (typeof value !== 'string' || value.trim() !== '') &&
+                    value !== 'null' && 
+                    value !== 'undefined' &&
+                    (typeof value !== 'string' || value.trim().toUpperCase() !== 'N/A');
+          
+          // Pentru obiecte (product_reference, collection_reference), verifică dacă au cel puțin title sau image
+          if (hasValue && typeof value === 'object') {
+            hasValue = value.title || value.featured_image || value.image;
+          }
+        }
+      } else if (metafield.ownerType === 'VARIANT') {
+        // Pentru variante, verifică dacă există cel puțin o variantă cu valoare
+        Object.keys(variantMetafields).forEach(variantId => {
+          if (!hasValue && variantMetafields[variantId] && 
+              variantMetafields[variantId][metafield.namespace] && 
+              variantMetafields[variantId][metafield.namespace][metafield.key] !== undefined) {
+            value = variantMetafields[variantId][metafield.namespace][metafield.key];
+            hasValue = value !== null && 
+                      value !== undefined && 
+                      value !== '' && 
+                      (typeof value !== 'string' || value.trim() !== '') &&
+                      value !== 'null' && 
+                      value !== 'undefined' &&
+                      (typeof value !== 'string' || value.trim().toUpperCase() !== 'N/A');
+            
+            // Pentru obiecte, verifică dacă au cel puțin title sau image
+            if (hasValue && typeof value === 'object') {
+              hasValue = value.title || value.featured_image || value.image;
+            }
+          }
+        });
+      }
+      
       // Calculează indexul global pentru colorarea corectă a rândurilor
       const globalIndex = allMetafieldsWithSection.indexOf(metafield);
       const isOdd = globalIndex !== -1 && globalIndex % 2 === 0;
@@ -912,6 +961,11 @@
       }
       if (hideFromMobile) {
         rowClasses += ' dc_hide_from_mobile';
+      }
+      
+      // Dacă metafield-ul nu are valoare, adaugă clasa dc_hidden
+      if (!hasValue) {
+        rowClasses += ' dc_hidden';
       }
       
       // Debug logging (doar în development)
@@ -958,7 +1012,56 @@
     // Generează rândurile HTML pentru metafield-urile ascunse
     let rowsHtml = '';
     
+    // Obține metafield-urile cu valori din obiectele construite în Liquid
+    const productMetafields = window.productMetafieldsData || {};
+    const variantMetafields = window.variantMetafieldsData || {};
+    
     metafields.forEach((metafield, index) => {
+      // Verifică dacă metafield-ul are valoare
+      let hasValue = false;
+      let value = null;
+      
+      if (metafield.ownerType === 'PRODUCT') {
+        if (productMetafields[metafield.namespace] && 
+            productMetafields[metafield.namespace][metafield.key] !== undefined) {
+          value = productMetafields[metafield.namespace][metafield.key];
+          // Verifică dacă valoarea nu este goală, null, undefined sau "N/A"
+          hasValue = value !== null && 
+                    value !== undefined && 
+                    value !== '' && 
+                    (typeof value !== 'string' || value.trim() !== '') &&
+                    value !== 'null' && 
+                    value !== 'undefined' &&
+                    (typeof value !== 'string' || value.trim().toUpperCase() !== 'N/A');
+          
+          // Pentru obiecte (product_reference, collection_reference), verifică dacă au cel puțin title sau image
+          if (hasValue && typeof value === 'object') {
+            hasValue = value.title || value.featured_image || value.image;
+          }
+        }
+      } else if (metafield.ownerType === 'VARIANT') {
+        // Pentru variante, verifică dacă există cel puțin o variantă cu valoare
+        Object.keys(variantMetafields).forEach(variantId => {
+          if (!hasValue && variantMetafields[variantId] && 
+              variantMetafields[variantId][metafield.namespace] && 
+              variantMetafields[variantId][metafield.namespace][metafield.key] !== undefined) {
+            value = variantMetafields[variantId][metafield.namespace][metafield.key];
+            hasValue = value !== null && 
+                      value !== undefined && 
+                      value !== '' && 
+                      (typeof value !== 'string' || value.trim() !== '') &&
+                      value !== 'null' && 
+                      value !== 'undefined' &&
+                      (typeof value !== 'string' || value.trim().toUpperCase() !== 'N/A');
+            
+            // Pentru obiecte, verifică dacă au cel puțin title sau image
+            if (hasValue && typeof value === 'object') {
+              hasValue = value.title || value.featured_image || value.image;
+            }
+          }
+        });
+      }
+      
       // Calculează indexul global pentru colorarea corectă a rândurilor
       const globalIndex = allMetafieldsWithSection.indexOf(metafield);
       const isOdd = globalIndex !== -1 && globalIndex % 2 === 0;
@@ -981,6 +1084,11 @@
       }
       if (hideFromMobile) {
         rowClasses += ' dc_hide_from_mobile';
+      }
+      
+      // Dacă metafield-ul nu are valoare, adaugă clasa dc_hidden
+      if (!hasValue) {
+        rowClasses += ' dc_hidden';
       }
       
       rowsHtml += '<tr class="' + rowClasses + '"' + (rowStyle ? ' style="' + rowStyle + '"' : '') + '>';
