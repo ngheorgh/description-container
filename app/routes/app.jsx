@@ -3,9 +3,31 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
 import CrispChat from "../components/CrispChat.jsx";
+import prisma from "../db.server.js";
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
+  const url = new URL(request.url);
+  const shopDomain = session.shop;
+
+  // Gating: dacă nu există plan selectat, redirect la /app/plans (evită loop când ești deja acolo)
+  if (!url.pathname.startsWith("/app/plans")) {
+    const shop = await prisma.shop.upsert({
+      where: { shopDomain },
+      update: {},
+      create: { shopDomain },
+      select: { id: true },
+    });
+
+    const planRows = await prisma.$queryRaw`
+      SELECT "planKey" FROM "ShopPlan" WHERE "shopId" = ${shop.id} LIMIT 1
+    `;
+    const hasPlan = Array.isArray(planRows) && planRows.length > 0;
+
+    if (!hasPlan) {
+      throw new Response("", { status: 302, headers: { Location: "/app/plans" } });
+    }
+  }
 
   // eslint-disable-next-line no-undef
   return { apiKey: process.env.SHOPIFY_API_KEY || "" };

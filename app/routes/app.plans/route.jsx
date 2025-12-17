@@ -1,10 +1,14 @@
-import { useLoaderData } from "react-router";
+import { useEffect } from "react";
+import { useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../../shopify.server";
+import prisma from "../../db.server.js";
+import { syncAll } from "../../models/sync.server.js";
 
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
+  const shopDomain = session.shop;
 
   const query = `
     query {
@@ -15,7 +19,79 @@ export const loader = async ({ request }) => {
   const data = await res.json();
   const productsCount = data?.data?.productsCount?.count ?? 0;
 
-  return { shopDomain: session.shop, productsCount };
+  // Verifică dacă există deja plan selectat
+  const shop = await prisma.shop.upsert({
+    where: { shopDomain },
+    update: {},
+    create: { shopDomain },
+    select: { id: true },
+  });
+
+  const planRows = await prisma.$queryRaw`
+    SELECT "planKey" FROM "ShopPlan" WHERE "shopId" = ${shop.id} LIMIT 1
+  `;
+  const existingPlan = Array.isArray(planRows) && planRows.length > 0
+    ? planRows[0].planKey
+    : null;
+
+  return { shopDomain, productsCount, existingPlan };
+};
+
+export const action = async ({ request }) => {
+  const { admin, session } = await authenticate.admin(request);
+  const shopDomain = session.shop;
+  const formData = await request.formData();
+  const planKey = String(formData.get("planKey") || "");
+
+  // Re-fetch products count pentru validare
+  const query = `
+    query {
+      productsCount { count }
+    }
+  `;
+  const res = await admin.graphql(query);
+  const data = await res.json();
+  const productsCount = data?.data?.productsCount?.count ?? 0;
+
+  // Validează eligibilitatea planului
+  const plan = PLANS.find((p) => p.key === planKey);
+  if (!plan) {
+    return { success: false, error: "Invalid plan selected." };
+  }
+
+  const isEligible = Number(productsCount ?? 0) <= plan.maxProducts;
+  if (!isEligible) {
+    return { success: false, error: "This plan is not eligible for your store size." };
+  }
+
+  // Salvează planul în DB
+  const shop = await prisma.shop.upsert({
+    where: { shopDomain },
+    update: {},
+    create: { shopDomain },
+    select: { id: true },
+  });
+
+  await prisma.$executeRaw`
+    INSERT INTO "ShopPlan" ("id", "shopId", "planKey", "productsCountAtSelection", "selectedAt", "updatedAt")
+    VALUES (gen_random_uuid(), ${shop.id}, ${planKey}, ${productsCount}, NOW(), NOW())
+    ON CONFLICT ("shopId")
+    DO UPDATE SET
+      "planKey" = EXCLUDED."planKey",
+      "productsCountAtSelection" = EXCLUDED."productsCountAtSelection",
+      "updatedAt" = NOW()
+  `;
+
+  // Rulează syncAll (populează produsele în DB)
+  try {
+    await syncAll(admin, shopDomain);
+  } catch (error) {
+    console.error("[app.plans] Error during syncAll:", error);
+    // Nu returnăm eroare aici - planul e salvat, sync-ul poate continua în background
+  }
+
+  // Redirect la home page
+  throw new Response("", { status: 302, headers: { Location: "/app" } });
 };
 
 const PLANS = [
@@ -100,8 +176,9 @@ const PLANS = [
 ];
 
 export default function PlansRoute() {
-  const { shopDomain, productsCount } = useLoaderData();
+  const { shopDomain, productsCount, existingPlan } = useLoaderData();
   const shopify = useAppBridge();
+  const fetcher = useFetcher();
 
   const recommendedPlanKey = (() => {
     const count = Number(productsCount ?? 0);
@@ -110,14 +187,26 @@ export default function PlansRoute() {
     return match?.key ?? "unlimited";
   })();
 
+  const isSubmitting = ["submitting", "loading"].includes(fetcher.state);
+
+  useEffect(() => {
+    if (fetcher.data?.success === false) {
+      shopify.toast.show(fetcher.data.error || "Error selecting plan", { isError: true });
+    }
+  }, [fetcher.data, shopify]);
+
   return (
     <s-page heading="Plans">
       <s-section>
         <s-stack direction="block" gap="base" alignItems="center">
           <s-paragraph>
-            Choose the plan that fits your store. We’ll connect billing and plan
-            eligibility next.
+            Choose the plan that fits your store.
           </s-paragraph>
+          {existingPlan && (
+            <s-banner tone="info">
+              Current plan: <s-text emphasis="strong">{existingPlan}</s-text>. You can change it anytime.
+            </s-banner>
+          )}
           <s-text tone="subdued">
             <span style={{ fontSize: "18px", fontWeight: 700}}>Products in your store: </span><span style={{ fontSize: "18px", fontWeight: 700, letterSpacing: "0.06em" }}>{productsCount}</span>
           </s-text>
@@ -131,6 +220,7 @@ export default function PlansRoute() {
               const isRecommended = p.key === recommendedPlanKey;
               const isEligible = Number(productsCount ?? 0) <= p.maxProducts;
               const isTooSmall = !isEligible;
+              const isActivated = p.key === existingPlan;
 
               return (
             <s-box
@@ -155,18 +245,18 @@ export default function PlansRoute() {
 
                 {/* CTA */}
                 <s-stack alignItems="center" alignContent="center">
-                <s-button
-                  variant={isRecommended ? "primary" : "secondary"}
-                  disabled={isTooSmall}
-                  onClick={() =>
-                    shopify.toast.show("Plan selection will be enabled next.", {
-                      duration: 3500,
-                    })
-                  }
-                >
-                    <s-icon type="collection-featured" size="small" />
-                  {p.cta}
-                </s-button>
+                  <fetcher.Form method="post">
+                    <input type="hidden" name="planKey" value={p.key} />
+                    <s-button
+                      variant={isRecommended ? "primary" : "secondary"}
+                      disabled={isTooSmall || isSubmitting || isActivated}
+                      type="submit"
+                      {...(isSubmitting ? { loading: true } : {})}
+                    >
+                      {!isActivated && <s-icon type="collection-featured" size="small" />}
+                      {isActivated ? "Already activated" : p.cta}
+                    </s-button>
+                  </fetcher.Form>
                 </s-stack>
                 <s-divider />
 
