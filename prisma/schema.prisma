@@ -46,6 +46,8 @@ model Shop {
   templateLookups     TemplateLookup[]
   webhookEvents       WebhookEvent[]
   setupProgress       SetupProgress?
+  syncStatus          SyncStatus?
+  shopPlan            ShopPlan?
 }
 
 model Product {
@@ -265,5 +267,54 @@ model SetupProgress {
   
   shop                    Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   
+  @@index([shopId])
+}
+
+model SyncStatus {
+  id   String @id @default(uuid())
+  shopId String @unique
+
+  // Lock simplu pentru a preveni multiple initial sync-uri în paralel
+  syncInProgress Boolean @default(false)
+  syncStartedAt  DateTime?
+
+  // Counts in App DB
+  appProducts           Int @default(0)
+  appCollections        Int @default(0)
+  appProductMetafields  Int @default(0)
+  appVariantMetafields  Int @default(0)
+
+  // Counts in Shopify Store (nullable până la primul check)
+  shopifyProducts          Int?
+  shopifyCollections       Int?
+  shopifyProductMetafields Int?
+  shopifyVariantMetafields Int?
+
+  // Timestamps / status
+  lastAppUpdateAt     DateTime?
+  lastShopifyCheckAt  DateTime?
+  lastFullSyncAt      DateTime?
+  lastWebhookAt       DateTime?
+  lastComparisonOk    Boolean?
+  lastMismatchDetails String?
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+}
+
+/**
+ * Plan selectat de merchant (folosit pentru gating/feature flags mai târziu)
+ */
+model ShopPlan {
+  id        String   @id @default(uuid())
+  shopId    String   @unique
+  planKey   String   // "free" | "starter" | "growth" | "enterprise" (extensibil)
+  productsCountAtSelection Int
+  selectedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
   @@index([shopId])
 }
